@@ -55,10 +55,16 @@ for timezone-aware dates, Vitest for unit tests.
 · `lib/` supabase/date/greeting/auth/env · `components/` ui + nav · `supabase/`
 migrations + setup.
 
-## Status
-- **Phase 1 (Foundation): done** — setup, design system, auth (invite-only),
-  session guard, app shell (bottom nav / side rail), theme toggle, home + placeholders,
-  full schema + RLS migrations. Placeholder pages exist for /letter /today /diary
-  /calendar /us /comfort.
-- Next: Phase 2 (Daily Letter), Phase 3 (Rating + Activity + media), Phase 4
-  (Timeline + Calendar), Phase 5 (Our Memories) → MVP.
+## Status — MVP COMPLETE ✅
+- Phase 1 Foundation · Phase 2 Daily Letter · Phase 3 Rating + Activity + media ·
+  Phase 4 Timeline + Calendar · Phase 5 Our Memories — all done & verified against
+  the live DB/Storage (scripts/test-*.mjs).
+- Routes: `/` home · `/letter` · `/today` (rating + activity composer) · `/diary`
+  timeline · `/diary/[date]` day detail · `/calendar` · `/us` Our Little Universe ·
+  `/profile`. `/comfort` still a placeholder.
+- Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
+  Reflection, unlockables, notifications, offline AI letter drafting. Then
+  polish/a11y/perf pass and Vercel deploy.
+- Dev test accounts: author fajarardiansyah912@gmail.com / keeper
+  emaildia@contoh.com (placeholder email — update when her real email arrives),
+  both password Testing#2007. SEED_* still in .env.local — remove before deploy.
