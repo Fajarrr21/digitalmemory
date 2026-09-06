@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/*
+  Design system — "A little place made for you"
+  Semantic color tokens resolve per-theme via CSS variables, so utilities
+  like `bg-ground` / `text-ink` are automatically theme-aware (no dark: needed).
+  Three theme states: system (no attr), explicit light, explicit dark.
+*/
+
+:root {
+  --ground: #fff8ef;
+  --paper: #fbf2e6;
+  --paper-2: #f5e8d8;
+  --ink: #403a36;
+  --ink-soft: #6f6862;
+  --ink-faint: #9c9089;
+  --accent: #e8b4b8;
+  --accent-ink: #b76a74;
+  --blush: #f4d6d8;
+  --rule: #e7d8c6;
+  --rule-soft: #efe3d4;
+  --note-bg: #f6ddde;
+  --note-ink: #8e5860;
+  --danger: #b4544e;
+  --shadow-soft: 12px 20px 40px -28px rgba(64, 58, 54, 0.5);
+  --shadow-lift: 0 2px 4px -2px rgba(64, 58, 54, 0.18);
+}
+
+/* System dark — only when the user hasn't explicitly chosen light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #221d1a;
+    --paper: #2a2320;
+    --paper-2: #332a25;
+    --ink: #f2e6d9;
+    --ink-soft: #cbbcae;
+    --ink-faint: #9b8c7e;
+    --accent: #e8b4b8;
+    --accent-ink: #eda9b2;
+    --blush: #4a3336;
+    --rule: #3c332d;
+    --rule-soft: #332b26;
+    --note-bg: #3e2c2e;
+    --note-ink: #e3aeb4;
+    --danger: #e79a94;
+    --shadow-soft: 14px 22px 46px -26px rgba(0, 0, 0, 0.7);
+    --shadow-lift: 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Explicit dark — wins in both directions */
+:root[data-theme="dark"] {
+  --ground: #221d1a;
+  --paper: #2a2320;
+  --paper-2: #332a25;
+  --ink: #f2e6d9;
+  --ink-soft: #cbbcae;
+  --ink-faint: #9b8c7e;
+  --accent: #e8b4b8;
+  --accent-ink: #eda9b2;
+  --blush: #4a3336;
+  --rule: #3c332d;
+  --rule-soft: #332b26;
+  --note-bg: #3e2c2e;
+  --note-ink: #e3aeb4;
+  --danger: #e79a94;
+  --shadow-soft: 14px 22px 46px -26px rgba(0, 0, 0, 0.7);
+  --shadow-lift: 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-blush: var(--blush);
+  --color-rule: var(--rule);
+  --color-rule-soft: var(--rule-soft);
+  --color-note-bg: var(--note-bg);
+  --color-note-ink: var(--note-ink);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-instrument), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), cursive;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lift: var(--shadow-lift);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle paper grain across the whole app */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: radial-gradient(rgba(120, 100, 80, 0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: multiply;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body::before {
+    mix-blend-mode: screen;
+    opacity: 0.22;
+  }
+}
+:root[data-theme="dark"] body::before {
+  mix-blend-mode: screen;
+  opacity: 0.22;
+}
+
+::selection {
+  background: var(--accent);
+  color: #4a2b30;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

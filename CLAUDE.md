@@ -1,0 +1,64 @@
+# A little place made for you
+
+A private digital journal & love-letter space for one specific person. Not social
+media, not an admin dashboard — a small, warm digital home. See the full plan:
+https://claude.ai/code/artifact/7306fae6-d808-44ed-b085-e238b4786a1b
+
+## Stack
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Supabase
+(Auth + Postgres + Storage) · Vercel. Zod for validation, `motion` for animation,
+`browser-image-compression` for client-side media, `date-fns` + `@date-fns/tz`
+for timezone-aware dates, Vitest for unit tests.
+
+## Commands
+- `npm run dev` — dev server
+- `npm run build` — production build (also runs TS check)
+- `npm run typecheck` — `tsc --noEmit`
+- `npm test` — Vitest unit tests
+
+## First-time Supabase setup (required to actually run)
+1. Create a project at supabase.com. Copy the URL + anon key + service-role key
+   into `.env.local` (template in `.env.local.example`).
+2. In the SQL editor, run `supabase/migrations/0001_init.sql` then
+   `supabase/migrations/0002_rls.sql`.
+3. Auth → Users: create two users (the Keeper = her, the Author = you).
+   Auth → Providers → Email: turn OFF "Allow new users to sign up" (invite-only).
+4. Edit the two emails in `supabase/setup_space.sql`, then run it once. It creates
+   the shared space, memberships, and a few starter letters.
+
+## Architecture notes / conventions
+- **Two-person "space" model.** Every content row has `space_id`; RLS reduces to
+  `is_member(space_id)` (+ `has_role(space_id,'author')` for author-only writes).
+- **Roles:** `keeper` (her — journals) and `author` (you — writes letters, seeds
+  memories/messages). Author tooling lives under `/author` (built later), never a
+  visible admin panel.
+- **Supabase clients:** `lib/supabase/client.ts` (browser), `server.ts` (RSC/actions,
+  runs as user, RLS on), `admin.ts` (service-role, RLS BYPASS — trusted server only,
+  guarded by `server-only`). Session refresh + route guard in `proxy.ts`.
+- **Timezone:** the user's day comes from `profiles.timezone`, computed server-side
+  via `lib/date.ts`. Never trust UTC or the device clock for "today".
+- **Daily Letter (Phase 2):** ONE per (recipient, date), enforced by DB unique
+  constraint `uq_letter_per_day`. Assignment is race-safe via the admin client with
+  `insert … on conflict do nothing` then re-read. Letter text is **snapshotted** onto
+  `daily_letters` so editing the pool never rewrites history.
+- **⚠ No runtime AI letter generation.** Letters come from a human-written
+  `letter_pool` (they must sound like you, not AI). Any AI is an offline drafting aid.
+- **Design system** in `app/globals.css`: semantic CSS-variable color tokens
+  (`bg-ground`, `text-ink`, `bg-paper`, `text-accent-ink`, …) that auto-resolve for
+  light / dark / system. Fonts: Fraunces (display), Instrument Sans (body), Caveat
+  (handwritten accents), IBM Plex Mono (metadata). Keep pink an accent, not a flood.
+- **Media:** private Storage bucket `media`, keys `{space_id}/{owner_id}/…`, served
+  via short-lived signed URLs. Storage RLS mirrors table RLS.
+
+## Structure
+`app/(auth)` sign-in · `app/(app)` authed shell + feature pages · `app/auth/*` routes
+· `lib/` supabase/date/greeting/auth/env · `components/` ui + nav · `supabase/`
+migrations + setup.
+
+## Status
+- **Phase 1 (Foundation): done** — setup, design system, auth (invite-only),
+  session guard, app shell (bottom nav / side rail), theme toggle, home + placeholders,
+  full schema + RLS migrations. Placeholder pages exist for /letter /today /diary
+  /calendar /us /comfort.
+- Next: Phase 2 (Daily Letter), Phase 3 (Rating + Activity + media), Phase 4
+  (Timeline + Calendar), Phase 5 (Our Memories) → MVP.
