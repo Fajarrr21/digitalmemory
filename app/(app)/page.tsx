@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getSpaceContext } from "@/lib/auth";
-import { formatDateLabel, localDateISO } from "@/lib/date";
+import { formatDateLabel, localDateISO, localHour } from "@/lib/date";
+import { daypart } from "@/lib/greeting";
 import { resolveDailyLetter } from "@/lib/letters";
 import { getDayActivities } from "@/lib/activities";
+import { getForYouMessages } from "@/lib/for-you";
 import { createClient } from "@/lib/supabase/server";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -17,7 +19,7 @@ export default async function HomePage() {
   const resolved = await resolveDailyLetter(ctx.spaceId, ctx.userId);
 
   const supabase = await createClient();
-  const [{ data: rating }, memories] = await Promise.all([
+  const [{ data: rating }, memories, forYou] = await Promise.all([
     supabase
       .from("daily_ratings")
       .select("score")
@@ -25,7 +27,13 @@ export default async function HomePage() {
       .eq("rating_date", today)
       .maybeSingle(),
     getDayActivities(ctx.userId, today),
+    getForYouMessages(ctx.spaceId),
   ]);
+
+  const isEvening = ["evening", "night"].includes(daypart(localHour(ctx.profile.timezone)));
+  const unopenedForYou =
+    ctx.role === "keeper" ? forYou.filter((m) => m.opened_at === null).length : 0;
+  const showReflect = isEvening;
 
   // Copy for the letter card, tuned to who's looking and whether it's been read.
   let letterEyebrow = "a letter is waiting";
@@ -101,6 +109,32 @@ export default async function HomePage() {
             </p>
           </PaperCard>
         </Link>
+      </div>
+
+      {/* Secondary entries */}
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/for-you"
+          className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-rule bg-paper px-4 py-3 text-sm transition hover:border-accent-ink/40"
+        >
+          <span className="text-ink">For You</span>
+          {unopenedForYou > 0 ? (
+            <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-[#4a2b30]">
+              {unopenedForYou} baru
+            </span>
+          ) : (
+            <span className="text-ink-faint">♡</span>
+          )}
+        </Link>
+        {showReflect ? (
+          <Link
+            href="/reflect"
+            className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-rule bg-paper px-4 py-3 text-sm transition hover:border-accent-ink/40"
+          >
+            <span className="text-ink">Refleksi malam</span>
+            <span className="text-ink-faint">🌙</span>
+          </Link>
+        ) : null}
       </div>
 
       {/* Today's memories */}
