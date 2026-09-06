@@ -2,8 +2,12 @@ import Link from "next/link";
 import { getSpaceContext } from "@/lib/auth";
 import { formatDateLabel, localDateISO } from "@/lib/date";
 import { resolveDailyLetter } from "@/lib/letters";
+import { getDayActivities } from "@/lib/activities";
+import { createClient } from "@/lib/supabase/server";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { MemoryCard } from "@/components/memory/memory-card";
+import { encouragementFor } from "./today/rating-config";
 
 export default async function HomePage() {
   const ctx = await getSpaceContext();
@@ -11,6 +15,17 @@ export default async function HomePage() {
 
   const today = localDateISO(ctx.profile.timezone);
   const resolved = await resolveDailyLetter(ctx.spaceId, ctx.userId);
+
+  const supabase = await createClient();
+  const [{ data: rating }, memories] = await Promise.all([
+    supabase
+      .from("daily_ratings")
+      .select("score")
+      .eq("user_id", ctx.userId)
+      .eq("rating_date", today)
+      .maybeSingle(),
+    getDayActivities(ctx.userId, today),
+  ]);
 
   // Copy for the letter card, tuned to who's looking and whether it's been read.
   let letterEyebrow = "a letter is waiting";
@@ -57,12 +72,21 @@ export default async function HomePage() {
         <Link href="/today" className="group block">
           <PaperCard className="h-full transition group-hover:-translate-y-0.5">
             <Eyebrow>how was your day?</Eyebrow>
-            <p className="mt-3 font-display text-lg font-medium text-ink">
-              Rate today
-            </p>
-            <p className="mt-1 text-sm text-ink-soft">
-              A number, and the why behind it.
-            </p>
+            {rating ? (
+              <>
+                <p className="mt-3 font-display text-lg font-medium text-ink">
+                  Today · <span className="text-accent-ink">{rating.score}</span>/10
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+                  {encouragementFor(rating.score, today)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 font-display text-lg font-medium text-ink">Rate today</p>
+                <p className="mt-1 text-sm text-ink-soft">A number, and the why behind it.</p>
+              </>
+            )}
           </PaperCard>
         </Link>
 
@@ -79,17 +103,36 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {/* Today's memories — empty state for now (wired up in Phase 3) */}
-      <section className="mt-2">
-        <Eyebrow>today&apos;s little moments</Eyebrow>
-        <PaperCard className="mt-3 border-dashed text-center">
-          <p className="font-hand text-xl text-accent-ink">
-            this little page is waiting for a memory
-          </p>
-          <p className="mt-1 text-sm text-ink-soft">
-            Whenever something happens worth keeping — it goes here.
-          </p>
-        </PaperCard>
+      {/* Today's memories */}
+      <section className="mt-2 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Eyebrow>today&apos;s little moments</Eyebrow>
+          <Link href="/today" className="text-xs text-accent-ink hover:underline">
+            + add
+          </Link>
+        </div>
+        {memories.length > 0 ? (
+          memories.map((m) => (
+            <MemoryCard
+              key={m.id}
+              id={m.id}
+              title={m.title}
+              description={m.description}
+              location={m.location}
+              media={m.media}
+              canDelete
+            />
+          ))
+        ) : (
+          <PaperCard className="border-dashed text-center">
+            <p className="font-hand text-xl text-accent-ink">
+              this little page is waiting for a memory
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Whenever something happens worth keeping — it goes here.
+            </p>
+          </PaperCard>
+        )}
       </section>
     </div>
   );
