@@ -1,5 +1,7 @@
 # A little place made for you
 
+**Live:** https://digitalmemory-two.vercel.app · Repo: github.com/Fajarrr21/digitalmemory · Deploy: Vercel (auto-deploys on push to `main`).
+
 A private digital journal & love-letter space for one specific person. Not social
 media, not an admin dashboard — a small, warm digital home. See the full plan:
 https://claude.ai/code/artifact/7306fae6-d808-44ed-b085-e238b4786a1b

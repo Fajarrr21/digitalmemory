@@ -1,4 +1,5 @@
 import { PaperCard } from "@/components/ui/paper-card";
+import { BrandMark } from "@/components/brand-mark";
 import { SignInForm } from "./sign-in-form";
 
 export default async function SignInPage({
@@ -11,6 +12,7 @@ export default async function SignInPage({
   return (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
+        <BrandMark className="mx-auto mb-4 h-14 w-14" />
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent-ink">
           welcome back
         </p>

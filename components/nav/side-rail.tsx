@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
+import { BrandMark } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 
 function isActive(pathname: string, href: string) {
@@ -17,13 +18,13 @@ export function SideRail() {
       aria-label="Primary"
       className="sticky top-0 hidden h-dvh w-56 flex-none flex-col gap-1 border-r border-rule px-4 py-8 md:flex"
     >
-      <Link href="/" className="mb-8 px-3">
+      <Link href="/" className="mb-8 flex items-center gap-2.5 px-3">
+        <BrandMark className="h-9 w-9 flex-none" />
         <span className="block font-display text-lg font-medium leading-tight text-ink">
           our little
           <br />
           universe
         </span>
-        <span className="mt-1 block font-hand text-base text-accent-ink">♡</span>
       </Link>
 
       {NAV_ITEMS.map(({ href, label, Icon }) => {
