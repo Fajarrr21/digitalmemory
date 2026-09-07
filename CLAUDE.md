@@ -64,8 +64,15 @@ migrations + setup.
 - Routes: `/` home · `/letter` · `/today` (rating + activity composer) · `/diary`
   timeline · `/diary/[date]` day detail · `/calendar` · `/us` Our Little Universe ·
   `/profile`. `/comfort` still a placeholder.
+- **Note visibility + WhatsApp notifications (done, migrations 0003/0004).**
+  `daily_activities.visibility` ('shared'|'private'): author sees everything
+  (own + partner's) via `has_role`; keeper sees own always and author's entries
+  only when shared. Author-only toggle in the `/today` composer. Saving a daily
+  rating notifies the partner over WhatsApp (bidirectional) via the Fonnte
+  gateway (`lib/notify/*`, `FONNTE_TOKEN`), capped at 2/day per person
+  (`daily_ratings.notify_count`); best-effort, never blocks the save.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
-  Reflection, unlockables, notifications, offline AI letter drafting. Then
+  Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
 - Accounts: author fajarardiansyah912@gmail.com (Testing#2007) / keeper
   auliaareregita@gmail.com (mygravita) — both live in Supabase, email-confirmed.
