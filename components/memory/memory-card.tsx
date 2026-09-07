@@ -7,7 +7,7 @@ import { deleteActivity } from "@/app/(app)/today/activity-actions";
 
 export type MemoryMedia = {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   url: string | null;
   alt: string | null;
 };
@@ -75,36 +75,54 @@ export function MemoryCard(props: MemoryCardProps) {
         <p className="whitespace-pre-line leading-relaxed text-ink-soft">{description}</p>
       ) : null}
 
-      {media.length > 0 ? (
-        <div className={media.length === 1 ? "" : "grid grid-cols-2 gap-2 sm:grid-cols-3"}>
-          {media.map((m) =>
-            m.url ? (
-              m.type === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={m.id}
-                  src={m.url}
-                  alt={m.alt ?? ""}
-                  loading="lazy"
-                  className="w-full rounded-lg border border-rule object-cover"
-                  style={{ aspectRatio: media.length === 1 ? "auto" : "1 / 1" }}
-                />
-              ) : (
-                <video
-                  key={m.id}
-                  src={m.url}
-                  controls
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="w-full rounded-lg border border-rule"
-                  style={{ aspectRatio: media.length === 1 ? "auto" : "1 / 1" }}
-                />
-              )
-            ) : null,
-          )}
-        </div>
-      ) : null}
+      {(() => {
+        const visuals = media.filter((m) => m.type !== "audio");
+        const audios = media.filter((m) => m.type === "audio");
+        return (
+          <>
+            {visuals.length > 0 ? (
+              <div className={visuals.length === 1 ? "" : "grid grid-cols-2 gap-2 sm:grid-cols-3"}>
+                {visuals.map((m) =>
+                  m.url ? (
+                    m.type === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={m.id}
+                        src={m.url}
+                        alt={m.alt ?? ""}
+                        loading="lazy"
+                        className="w-full rounded-lg border border-rule object-cover"
+                        style={{ aspectRatio: visuals.length === 1 ? "auto" : "1 / 1" }}
+                      />
+                    ) : (
+                      <video
+                        key={m.id}
+                        src={m.url}
+                        controls
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full rounded-lg border border-rule"
+                        style={{ aspectRatio: visuals.length === 1 ? "auto" : "1 / 1" }}
+                      />
+                    )
+                  ) : null,
+                )}
+              </div>
+            ) : null}
+
+            {audios.map((m) =>
+              m.url ? (
+                <div key={m.id} className="flex items-center gap-2 rounded-xl border border-rule bg-ground/60 p-2.5">
+                  <span className="flex-none text-accent-ink" aria-hidden>🎙️</span>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <audio src={m.url} controls preload="metadata" className="h-9 min-w-0 flex-1" />
+                </div>
+              ) : null,
+            )}
+          </>
+        );
+      })()}
     </PaperCard>
   );
 }

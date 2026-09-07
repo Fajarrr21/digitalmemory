@@ -6,7 +6,7 @@
 
 export type MemberRole = "keeper" | "author";
 export type LetterStatus = "sealed" | "opened";
-export type MediaType = "image" | "video";
+export type MediaType = "image" | "video" | "audio";
 export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
 
@@ -176,6 +176,7 @@ export type Database = {
           activity_id: string | null;
           memory_id: string | null;
           message_id: string | null;
+          rating_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -193,6 +194,7 @@ export type Database = {
           activity_id?: string | null;
           memory_id?: string | null;
           message_id?: string | null;
+          rating_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["media"]["Insert"]>;
         Relationships: [];

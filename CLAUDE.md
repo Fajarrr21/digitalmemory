@@ -71,6 +71,12 @@ migrations + setup.
   rating notifies the partner over WhatsApp (bidirectional) via the Fonnte
   gateway (`lib/notify/*`, `FONNTE_TOKEN`), capped at 2/day per person
   (`daily_ratings.notify_count`); best-effort, never blocks the save.
+- **Partner timeline + voice notes (done, migration 0005).** Diary/Calendar/day
+  detail have an "Aku / Dia" toggle (`?who=partner`) to view the partner's
+  timeline (RLS-filtered); partner content is read-only. Voice notes: `media`
+  gains type `'audio'` and a `rating_id` parent, recorded in-browser via
+  MediaRecorder (`components/media/voice-recorder.tsx`), attachable to a daily
+  activity and to a daily rating's story; played back with a signed URL.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

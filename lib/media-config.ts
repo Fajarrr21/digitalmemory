@@ -2,7 +2,9 @@
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB (before compression)
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
+export const MAX_AUDIO_BYTES = 20 * 1024 * 1024; // 20 MB (a very long voice note)
 export const MAX_FILES_PER_ACTIVITY = 8;
+export const MAX_VOICE_SECONDS = 300; // 5 min cap on a single voice note
 
 export const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 export const VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime"];
@@ -40,8 +42,16 @@ const EXT: Record<string, string> = {
   "video/mp4": "mp4",
   "video/webm": "webm",
   "video/quicktime": "mov",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/aac": "aac",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
 };
 
 export function extFromMime(mime: string): string {
-  return EXT[mime] ?? "bin";
+  // MediaRecorder mimes carry a codecs param, e.g. "audio/webm;codecs=opus".
+  const base = mime.split(";")[0].trim();
+  return EXT[base] ?? "bin";
 }

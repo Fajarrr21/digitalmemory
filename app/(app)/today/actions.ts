@@ -13,6 +13,12 @@ const RatingSchema = z.object({
   mood: z.enum(MOODS).optional().or(z.literal("")),
   reason: z.string().trim().max(2000).optional(),
   note: z.string().trim().max(2000).optional(),
+  // Voice note (optional) — uploaded client-side, path passed through here.
+  voice_path: z.string().max(400).optional(),
+  voice_mime: z.string().max(120).optional(),
+  voice_duration: z.coerce.number().nonnegative().optional(),
+  voice_size: z.coerce.number().int().nonnegative().optional(),
+  voice_clear: z.string().optional(), // "1" = remove existing voice note
 });
 
 export type RatingState = { ok?: boolean; error?: string };
@@ -29,6 +35,11 @@ export async function saveRating(
     mood: formData.get("mood") ?? "",
     reason: (formData.get("reason") as string) ?? "",
     note: (formData.get("note") as string) ?? "",
+    voice_path: (formData.get("voice_path") as string) || undefined,
+    voice_mime: (formData.get("voice_mime") as string) || undefined,
+    voice_duration: (formData.get("voice_duration") as string) || undefined,
+    voice_size: (formData.get("voice_size") as string) || undefined,
+    voice_clear: (formData.get("voice_clear") as string) || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Coba cek lagi ya." };
@@ -49,20 +60,51 @@ export async function saveRating(
     .maybeSingle();
   const priorCount = prior?.notify_count ?? 0;
 
-  const { error } = await supabase.from("daily_ratings").upsert(
-    {
-      space_id: ctx.spaceId,
-      user_id: ctx.userId,
-      rating_date: ratingDate,
-      score: parsed.data.score,
-      mood: parsed.data.mood ? parsed.data.mood : null,
-      reason: parsed.data.reason || null,
-      note: parsed.data.note || null,
-    },
-    { onConflict: "user_id,rating_date" },
-  );
+  const { data: ratingRow, error } = await supabase
+    .from("daily_ratings")
+    .upsert(
+      {
+        space_id: ctx.spaceId,
+        user_id: ctx.userId,
+        rating_date: ratingDate,
+        score: parsed.data.score,
+        mood: parsed.data.mood ? parsed.data.mood : null,
+        reason: parsed.data.reason || null,
+        note: parsed.data.note || null,
+      },
+      { onConflict: "user_id,rating_date" },
+    )
+    .select("id")
+    .single();
 
-  if (error) return { error: "Gagal menyimpan. Coba lagi sebentar ya. ♡" };
+  if (error || !ratingRow) return { error: "Gagal menyimpan. Coba lagi sebentar ya. ♡" };
+
+  // Voice note: replace on new upload or on explicit clear.
+  const newVoice = parsed.data.voice_path;
+  const clearVoice = parsed.data.voice_clear === "1";
+  if (newVoice || clearVoice) {
+    const { data: old } = await supabase
+      .from("media")
+      .select("storage_path")
+      .eq("rating_id", ratingRow.id)
+      .eq("type", "audio");
+    if (old && old.length > 0) {
+      await supabase.storage.from("media").remove(old.map((o) => o.storage_path));
+      await supabase.from("media").delete().eq("rating_id", ratingRow.id).eq("type", "audio");
+    }
+  }
+  if (newVoice && newVoice.startsWith(`${ctx.spaceId}/${ctx.userId}/`)) {
+    await supabase.from("media").insert({
+      space_id: ctx.spaceId,
+      owner_id: ctx.userId,
+      rating_id: ratingRow.id,
+      type: "audio",
+      storage_path: newVoice,
+      mime: parsed.data.voice_mime || "audio/webm",
+      size_bytes: parsed.data.voice_size ?? 0,
+      duration: parsed.data.voice_duration ?? null,
+    });
+  }
 
   if (priorCount < MAX_NOTIFY) {
     const sent = await notifyPartnerOfRating({

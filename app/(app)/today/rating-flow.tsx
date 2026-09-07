@@ -2,8 +2,11 @@
 
 import { useActionState, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { extFromMime } from "@/lib/media-config";
+import { VoiceRecorder, type VoiceState } from "@/components/media/voice-recorder";
 import { saveRating, type RatingState } from "./actions";
 import { MOODS, bandLabel, encouragementFor, promptFor, type Mood } from "./rating-config";
 
@@ -17,17 +20,63 @@ type Existing = {
 const fieldClass =
   "w-full rounded-xl border border-rule bg-ground px-3.5 py-2.5 text-ink placeholder:text-ink-faint outline-none transition focus:border-accent-ink/50";
 
-export function RatingFlow({ existing, seed }: { existing: Existing; seed: string }) {
+export function RatingFlow({
+  existing,
+  seed,
+  spaceId,
+  userId,
+  existingVoiceUrl = null,
+}: {
+  existing: Existing;
+  seed: string;
+  spaceId: string;
+  userId: string;
+  existingVoiceUrl?: string | null;
+}) {
   const reduce = useReducedMotion();
   const [score, setScore] = useState<number | null>(existing?.score ?? null);
   const [mood, setMood] = useState<Mood | "">((existing?.mood as Mood) ?? "");
+  const [voice, setVoice] = useState<VoiceState>({ kind: "unchanged" });
+  const [uploading, setUploading] = useState(false);
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
   const [state, action, pending] = useActionState<RatingState, FormData>(saveRating, {});
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setVoiceErr(null);
+    try {
+      if (voice.kind === "new") {
+        setUploading(true);
+        const supabase = createClient();
+        const path = `${spaceId}/${userId}/rating/${crypto.randomUUID()}.${extFromMime(voice.mime)}`;
+        const { error } = await supabase.storage
+          .from("media")
+          .upload(path, voice.blob, { contentType: voice.mime, upsert: false });
+        setUploading(false);
+        if (error) {
+          setVoiceErr("Voice-nya gagal diunggah. Coba lagi ya. ♡");
+          return;
+        }
+        fd.set("voice_path", path);
+        fd.set("voice_mime", voice.mime);
+        fd.set("voice_duration", String(voice.durationSec));
+        fd.set("voice_size", String(voice.blob.size));
+      } else if (voice.kind === "removed") {
+        fd.set("voice_clear", "1");
+      }
+      action(fd);
+    } catch {
+      setUploading(false);
+      setVoiceErr("Voice-nya gagal diunggah. Coba lagi ya. ♡");
+    }
+  }
 
   // The score that's actually been saved (fresh save wins over loaded value).
   const savedScore = state.ok ? score : existing?.score ?? null;
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <input type="hidden" name="score" value={score ?? ""} />
       <input type="hidden" name="mood" value={mood} />
 
@@ -142,6 +191,19 @@ export function RatingFlow({ existing, seed }: { existing: Existing; seed: strin
               />
             </div>
 
+            {/* voice note */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm text-ink-soft">
+                Cerita lewat suara <span className="text-ink-faint">(opsional — males ngetik? rekam aja)</span>
+              </label>
+              <VoiceRecorder
+                existingUrl={existingVoiceUrl}
+                onChange={setVoice}
+                disabled={pending || uploading}
+              />
+              {voiceErr ? <p role="alert" className="text-sm text-danger">{voiceErr}</p> : null}
+            </div>
+
             {state.error ? (
               <p role="alert" className="text-sm text-danger">{state.error}</p>
             ) : null}
@@ -149,8 +211,8 @@ export function RatingFlow({ existing, seed }: { existing: Existing; seed: strin
               <p className="text-sm text-accent-ink">Tersimpan ✓</p>
             ) : null}
 
-            <Button type="submit" size="lg" disabled={pending || score === null} className="self-start">
-              {pending ? "Menyimpan…" : existing ? "Perbarui hari ini" : "Simpan hari ini"}
+            <Button type="submit" size="lg" disabled={pending || uploading || score === null} className="self-start">
+              {uploading ? "Mengunggah suara…" : pending ? "Menyimpan…" : existing ? "Perbarui hari ini" : "Simpan hari ini"}
             </Button>
           </motion.div>
         ) : null}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSpaceContext, getPartner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDayActivities } from "@/lib/activities";
+import { getRatingVoiceUrl } from "@/lib/rating-media";
 import { formatDateLabel } from "@/lib/date";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -31,7 +32,7 @@ export default async function DayDetailPage({
   const [{ data: rating }, { data: letter }, memories] = await Promise.all([
     supabase
       .from("daily_ratings")
-      .select("score, mood, reason, note")
+      .select("id, score, mood, reason, note")
       .eq("user_id", targetId)
       .eq("rating_date", date)
       .maybeSingle(),
@@ -44,6 +45,7 @@ export default async function DayDetailPage({
     getDayActivities(targetId, date),
   ]);
 
+  const voiceUrl = rating ? await getRatingVoiceUrl(rating.id) : null;
   const empty = !rating && !letter && memories.length === 0;
 
   return (
@@ -81,6 +83,13 @@ export default async function DayDetailPage({
             </p>
             {rating.reason ? <p className="mt-2 leading-relaxed text-ink-soft">{rating.reason}</p> : null}
             {rating.note ? <p className="mt-1 text-sm text-ink-faint">{rating.note}</p> : null}
+            {voiceUrl ? (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-rule bg-ground/60 p-2.5">
+                <span className="flex-none text-accent-ink" aria-hidden>🎙️</span>
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <audio src={voiceUrl} controls preload="metadata" className="h-9 min-w-0 flex-1" />
+              </div>
+            ) : null}
           </PaperCard>
         </section>
       ) : null}

@@ -7,15 +7,25 @@ import { getSpaceContext } from "@/lib/auth";
 import { localDateISO } from "@/lib/date";
 import { IMAGE_MIME, VIDEO_MIME, MAX_FILES_PER_ACTIVITY } from "@/lib/media-config";
 
-const MediaMetaSchema = z.object({
-  storage_path: z.string().min(1),
-  type: z.enum(["image", "video"]),
-  mime: z.string().refine((m) => [...IMAGE_MIME, ...VIDEO_MIME].includes(m), "mime tidak valid"),
-  size_bytes: z.number().int().nonnegative(),
-  width: z.number().int().positive().nullable().optional(),
-  height: z.number().int().positive().nullable().optional(),
-  duration: z.number().nonnegative().nullable().optional(),
-});
+const MediaMetaSchema = z
+  .object({
+    storage_path: z.string().min(1),
+    type: z.enum(["image", "video", "audio"]),
+    mime: z.string().min(1).max(120),
+    size_bytes: z.number().int().nonnegative(),
+    width: z.number().int().positive().nullable().optional(),
+    height: z.number().int().positive().nullable().optional(),
+    duration: z.number().nonnegative().nullable().optional(),
+  })
+  .refine(
+    (m) =>
+      m.type === "image"
+        ? IMAGE_MIME.includes(m.mime)
+        : m.type === "video"
+          ? VIDEO_MIME.includes(m.mime)
+          : m.mime.startsWith("audio/"), // audio mimes carry codec params
+    "mime tidak valid",
+  );
 
 const CreateActivitySchema = z.object({
   title: z.string().trim().min(1, "Kasih judul dulu ya.").max(120),

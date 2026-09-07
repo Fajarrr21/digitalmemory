@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createActivity } from "./activity-actions";
+import { VoiceRecorder, type VoiceState } from "@/components/media/voice-recorder";
 import {
   ACCEPT_ATTR,
   MAX_FILES_PER_ACTIVITY,
@@ -53,6 +54,7 @@ export function ActivityComposer({
   const [date, setDate] = useState(todayISO);
   const [isPrivate, setIsPrivate] = useState(false);
   const [items, setItems] = useState<Picked[]>([]);
+  const [voice, setVoice] = useState<VoiceState>({ kind: "unchanged" });
   const [working, setWorking] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,7 @@ export function ActivityComposer({
   function reset() {
     items.forEach((it) => URL.revokeObjectURL(it.previewUrl));
     setItems([]);
+    setVoice({ kind: "unchanged" });
     setTitle("");
     setDescription("");
     setLocation("");
@@ -115,7 +118,15 @@ export function ActivityComposer({
 
     const supabase = createClient();
     const groupId = crypto.randomUUID();
-    const metas = [];
+    const metas: {
+      storage_path: string;
+      type: "image" | "video" | "audio";
+      mime: string;
+      size_bytes: number;
+      width: number | null;
+      height: number | null;
+      duration: number | null;
+    }[] = [];
 
     try {
       for (let i = 0; i < items.length; i++) {
@@ -151,6 +162,24 @@ export function ActivityComposer({
           duration: null,
         });
         setProgress({ done: i + 1, total: items.length });
+      }
+
+      // Voice note (optional) — no compression needed, upload as-is.
+      if (voice.kind === "new") {
+        const path = `${spaceId}/${ownerId}/${groupId}/${crypto.randomUUID()}.${extFromMime(voice.mime)}`;
+        const { error: upErr } = await supabase.storage
+          .from("media")
+          .upload(path, voice.blob, { contentType: voice.mime, upsert: false });
+        if (upErr) throw new Error(upErr.message);
+        metas.push({
+          storage_path: path,
+          type: "audio",
+          mime: voice.mime,
+          size_bytes: voice.blob.size,
+          width: null,
+          height: null,
+          duration: voice.durationSec,
+        });
       }
 
       const res = await createActivity({
@@ -263,6 +292,12 @@ export function ActivityComposer({
         <Button type="button" variant="ghost" size="sm" onClick={() => fileInput.current?.click()} className="self-start">
           + Tambah foto / video
         </Button>
+      </div>
+
+      {/* voice note */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm text-ink-soft">Voice note <span className="text-ink-faint">(opsional — males ngetik? cerita aja lewat suara)</span></span>
+        <VoiceRecorder onChange={setVoice} disabled={working} />
       </div>
 
       {canChooseVisibility ? (

@@ -1,6 +1,7 @@
 import { getSpaceContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDayActivities } from "@/lib/activities";
+import { getRatingVoiceUrl } from "@/lib/rating-media";
 import { formatDateLabel, localDateISO } from "@/lib/date";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -17,12 +18,14 @@ export default async function TodayPage() {
   const [{ data: rating }, memories] = await Promise.all([
     supabase
       .from("daily_ratings")
-      .select("score, mood, reason, note")
+      .select("id, score, mood, reason, note")
       .eq("user_id", ctx.userId)
       .eq("rating_date", today)
       .maybeSingle(),
     getDayActivities(ctx.userId, today),
   ]);
+
+  const voiceUrl = rating ? await getRatingVoiceUrl(rating.id) : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -35,7 +38,13 @@ export default async function TodayPage() {
       </div>
 
       <PaperCard>
-        <RatingFlow existing={rating ?? null} seed={today} />
+        <RatingFlow
+          existing={rating ?? null}
+          seed={today}
+          spaceId={ctx.spaceId}
+          userId={ctx.userId}
+          existingVoiceUrl={voiceUrl}
+        />
       </PaperCard>
 
       <section className="flex flex-col gap-4">
