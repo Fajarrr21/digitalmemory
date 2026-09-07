@@ -15,13 +15,16 @@ type RatingSummary = {
  * partner is the recipient. Uses the admin client so it can read the partner's
  * number without leaning on the caller's RLS view. Best-effort — any failure is
  * swallowed so the rating save is never affected.
+ *
+ * Returns true only when a message was actually accepted by the gateway, so the
+ * caller can count real sends (and cap them per day).
  */
 export async function notifyPartnerOfRating(args: {
   spaceId: string;
   senderId: string;
   senderName: string;
   rating: RatingSummary;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const admin = createAdminClient();
 
@@ -33,7 +36,7 @@ export async function notifyPartnerOfRating(args: {
       .neq("user_id", args.senderId);
 
     const partnerId = members?.[0]?.user_id;
-    if (!partnerId) return;
+    if (!partnerId) return false;
 
     const { data: partner } = await admin
       .from("profiles")
@@ -42,11 +45,12 @@ export async function notifyPartnerOfRating(args: {
       .maybeSingle();
 
     const to = partner?.whatsapp?.trim();
-    if (!to) return; // partner hasn't set a number — nothing to do
+    if (!to) return false; // partner hasn't set a number — nothing to do
 
-    await sendWhatsApp(to, buildMessage(args.senderName, args.rating));
+    return await sendWhatsApp(to, buildMessage(args.senderName, args.rating));
   } catch {
     // Never let a notification failure surface to the user.
+    return false;
   }
 }
 

@@ -120,6 +120,7 @@ export type Database = {
           mood: string | null;
           reason: string | null;
           note: string | null;
+          notify_count: number;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -130,6 +131,7 @@ export type Database = {
           mood?: string | null;
           reason?: string | null;
           note?: string | null;
+          notify_count?: number;
         };
         Update: Partial<Database["public"]["Tables"]["daily_ratings"]["Insert"]>;
         Relationships: [];

@@ -37,15 +37,17 @@ export async function saveRating(
   const supabase = await createClient();
   const ratingDate = localDateISO(ctx.profile.timezone);
 
-  // Is this the first rating of the day? If so we notify the partner once.
-  // Edits later in the day don't re-send, keeping it to ~one message each.
+  // We notify the partner on save (first entry + later updates), but cap it at
+  // MAX_NOTIFY per person per day so edits can't spam. notify_count tracks how
+  // many messages actually went out today.
+  const MAX_NOTIFY = 2;
   const { data: prior } = await supabase
     .from("daily_ratings")
-    .select("id")
+    .select("notify_count")
     .eq("user_id", ctx.userId)
     .eq("rating_date", ratingDate)
     .maybeSingle();
-  const isFirstToday = !prior;
+  const priorCount = prior?.notify_count ?? 0;
 
   const { error } = await supabase.from("daily_ratings").upsert(
     {
@@ -62,8 +64,8 @@ export async function saveRating(
 
   if (error) return { error: "Gagal menyimpan. Coba lagi sebentar ya. ♡" };
 
-  if (isFirstToday) {
-    await notifyPartnerOfRating({
+  if (priorCount < MAX_NOTIFY) {
+    const sent = await notifyPartnerOfRating({
       spaceId: ctx.spaceId,
       senderId: ctx.userId,
       senderName: ctx.profile.nickname || ctx.profile.display_name,
@@ -74,6 +76,14 @@ export async function saveRating(
         note: parsed.data.note || null,
       },
     });
+    // Only burn a slot when a message actually went out.
+    if (sent) {
+      await supabase
+        .from("daily_ratings")
+        .update({ notify_count: priorCount + 1 })
+        .eq("user_id", ctx.userId)
+        .eq("rating_date", ratingDate);
+    }
   }
 
   revalidatePath("/today");
