@@ -57,7 +57,7 @@ function buildMessage(r: RatingSummary): string {
   // Addressed to the recipient, so a warm role-agnostic label reads right both
   // ways ("your love") — no dependency on messy display names/nicknames.
   const lines = [
-    "💌 Kekasihmu baru mengisi rating hari ini",
+    "💌 Your love baru mengisi rating hari ini",
     "",
     `Skor: ${r.score}/10`,
   ];
