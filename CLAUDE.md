@@ -67,6 +67,6 @@ migrations + setup.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, notifications, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
-- Dev test accounts: author fajarardiansyah912@gmail.com / keeper
-  emaildia@contoh.com (placeholder email — update when her real email arrives),
-  both password Testing#2007. SEED_* still in .env.local — remove before deploy.
+- Accounts: author fajarardiansyah912@gmail.com (Testing#2007) / keeper
+  auliaareregita@gmail.com (mygravita) — both live in Supabase, email-confirmed.
+  SEED_* still in .env.local — remove before sharing the repo.
