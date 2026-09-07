@@ -32,8 +32,9 @@ for timezone-aware dates, Vitest for unit tests.
 - **Two-person "space" model.** Every content row has `space_id`; RLS reduces to
   `is_member(space_id)` (+ `has_role(space_id,'author')` for author-only writes).
 - **Roles:** `keeper` (her — journals) and `author` (you — writes letters, seeds
-  memories/messages). Author tooling lives under `/author` (built later), never a
-  visible admin panel.
+  messages). Author tooling lives under `/author` (built later), never a
+  visible admin panel. NOTE: Our Little Universe memories are co-authored — both
+  members add/delete them (migration 0007), so they're no longer author-only.
 - **Supabase clients:** `lib/supabase/client.ts` (browser), `server.ts` (RSC/actions,
   runs as user, RLS on), `admin.ts` (service-role, RLS BYPASS — trusted server only,
   guarded by `server-only`). Session refresh + route guard in `proxy.ts`.

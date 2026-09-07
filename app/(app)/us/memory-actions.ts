@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSpaceContext } from "@/lib/auth";
 import { IMAGE_MIME, VIDEO_MIME, MAX_FILES_PER_ACTIVITY } from "@/lib/media-config";
 
@@ -30,7 +31,6 @@ export type MemoryResult = { ok?: boolean; error?: string; id?: string };
 export async function createMemory(input: CreateMemoryInput): Promise<MemoryResult> {
   const ctx = await getSpaceContext();
   if (!ctx) return { error: "Sesi kamu habis. Masuk lagi ya." };
-  if (ctx.role !== "author") return { error: "Cuma kamu yang bisa menambah kenangan kita." };
 
   const parsed = CreateMemorySchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Coba cek lagi isinya." };
@@ -81,17 +81,26 @@ export async function createMemory(input: CreateMemoryInput): Promise<MemoryResu
 
 export async function deleteMemory(memoryId: string): Promise<{ ok: boolean }> {
   const ctx = await getSpaceContext();
-  if (!ctx || ctx.role !== "author") return { ok: false };
+  if (!ctx) return { ok: false };
 
-  const supabase = await createClient();
-  const { data: media } = await supabase
+  // Both members may delete any shared memory. Admin client so a member can
+  // also remove the partner's files from storage.
+  const admin = createAdminClient();
+  const { data: memory } = await admin
+    .from("our_memories")
+    .select("id, space_id")
+    .eq("id", memoryId)
+    .maybeSingle();
+  if (!memory || memory.space_id !== ctx.spaceId) return { ok: false };
+
+  const { data: media } = await admin
     .from("media")
     .select("storage_path")
     .eq("memory_id", memoryId);
   const paths = (media ?? []).map((m) => m.storage_path);
-  if (paths.length > 0) await supabase.storage.from("media").remove(paths);
+  if (paths.length > 0) await admin.storage.from("media").remove(paths);
 
-  const { error } = await supabase.from("our_memories").delete().eq("id", memoryId);
+  const { error } = await admin.from("our_memories").delete().eq("id", memoryId);
   if (error) return { ok: false };
 
   revalidatePath("/us");

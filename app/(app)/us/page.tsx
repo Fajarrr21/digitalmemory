@@ -11,7 +11,6 @@ export default async function UsPage() {
   if (!ctx) return null;
 
   const memories = await getOurMemories(ctx.spaceId);
-  const isAuthor = ctx.role === "author";
 
   return (
     <div className="flex flex-col gap-8">
@@ -27,9 +26,7 @@ export default async function UsPage() {
         <PaperCard className="border-dashed text-center">
           <p className="font-hand text-xl text-accent-ink">the story starts here</p>
           <p className="mt-1 text-sm text-ink-soft">
-            {isAuthor
-              ? "Tambah kenangan pertama kalian di bawah — momen yang pengen kamu simpan buat dia."
-              : "Belum ada kenangan yang ditulis. Sebentar lagi ada, ya. ♡"}
+            Tambah kenangan pertama kalian di bawah — momen yang pengen kalian simpan berdua.
           </p>
         </PaperCard>
       ) : (
@@ -48,7 +45,7 @@ export default async function UsPage() {
                 description={m.description}
                 dateLabel={m.memory_date ? formatDateLabel(m.memory_date) : null}
                 media={m.media}
-                canDelete={isAuthor}
+                canDelete
               />
             </li>
           ))}
@@ -60,11 +57,9 @@ export default async function UsPage() {
         </ol>
       )}
 
-      {isAuthor ? (
-        <div className="border-t border-rule-soft pt-6">
-          <MemoryComposer spaceId={ctx.spaceId} ownerId={ctx.userId} />
-        </div>
-      ) : null}
+      <div className="border-t border-rule-soft pt-6">
+        <MemoryComposer spaceId={ctx.spaceId} ownerId={ctx.userId} />
+      </div>
     </div>
   );
 }
