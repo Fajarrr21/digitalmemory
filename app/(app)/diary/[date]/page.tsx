@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSpaceContext } from "@/lib/auth";
+import { getSpaceContext, getPartner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDayActivities } from "@/lib/activities";
 import { formatDateLabel } from "@/lib/date";
@@ -11,8 +11,10 @@ import { bandLabel } from "../../today/rating-config";
 
 export default async function DayDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ date: string }>;
+  searchParams: Promise<{ who?: string }>;
 }) {
   const { date } = await params;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) notFound();
@@ -20,21 +22,26 @@ export default async function DayDetailPage({
   const ctx = await getSpaceContext();
   if (!ctx) return null;
 
+  const { who } = await searchParams;
+  const partner = await getPartner(ctx.spaceId, ctx.userId);
+  const viewingPartner = who === "partner" && !!partner;
+  const targetId = viewingPartner ? partner!.id : ctx.userId;
+
   const supabase = await createClient();
   const [{ data: rating }, { data: letter }, memories] = await Promise.all([
     supabase
       .from("daily_ratings")
       .select("score, mood, reason, note")
-      .eq("user_id", ctx.userId)
+      .eq("user_id", targetId)
       .eq("rating_date", date)
       .maybeSingle(),
     supabase
       .from("daily_letters")
       .select("category, title, body, status")
-      .eq("recipient_id", ctx.userId)
+      .eq("recipient_id", targetId)
       .eq("letter_date", date)
       .maybeSingle(),
-    getDayActivities(ctx.userId, date),
+    getDayActivities(targetId, date),
   ]);
 
   const empty = !rating && !letter && memories.length === 0;
@@ -42,12 +49,18 @@ export default async function DayDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/diary" className="text-sm text-accent-ink hover:underline">
+        <Link
+          href={viewingPartner ? "/diary?who=partner" : "/diary"}
+          className="text-sm text-accent-ink hover:underline"
+        >
           ← Diary
         </Link>
         <h1 className="mt-2 font-display text-3xl font-medium text-ink text-balance">
           {formatDateLabel(date)}
         </h1>
+        {viewingPartner ? (
+          <p className="mt-1 font-mono text-sm text-ink-faint">harinya {partner!.name}</p>
+        ) : null}
       </div>
 
       {empty ? (
@@ -83,7 +96,7 @@ export default async function DayDetailPage({
               description={m.description}
               location={m.location}
               media={m.media}
-              canDelete
+              canDelete={!viewingPartner}
             />
           ))}
         </section>

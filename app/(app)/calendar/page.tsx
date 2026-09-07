@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { getSpaceContext } from "@/lib/auth";
+import { getSpaceContext, getPartner } from "@/lib/auth";
 import { getMonthMarks } from "@/lib/timeline";
 import { localDateISO } from "@/lib/date";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { PersonToggle } from "@/components/person-toggle";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
@@ -18,20 +19,26 @@ function ymParam(y: number, m: number) {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; who?: string }>;
 }) {
   const ctx = await getSpaceContext();
   if (!ctx) return null;
 
   const todayISO = localDateISO(ctx.profile.timezone);
-  const { month: monthParam } = await searchParams;
+  const { month: monthParam, who } = await searchParams;
+
+  const partner = await getPartner(ctx.spaceId, ctx.userId);
+  const viewingPartner = who === "partner" && !!partner;
+  const targetId = viewingPartner ? partner!.id : ctx.userId;
+  const whoQuery = viewingPartner ? "&who=partner" : "";
+  const daySuffix = viewingPartner ? "?who=partner" : "";
 
   const match = /^(\d{4})-(\d{2})$/.exec(monthParam ?? "");
   const now = new Date(`${todayISO}T12:00:00`);
   const year = match ? Number(match[1]) : now.getFullYear();
   const month = match ? Number(match[2]) : now.getMonth() + 1; // 1-indexed
 
-  const marks = await getMonthMarks(ctx.userId, year, month);
+  const marks = await getMonthMarks(targetId, year, month);
 
   const daysInMonth = new Date(year, month, 0).getDate();
   // Monday-first offset for the 1st of the month.
@@ -47,28 +54,38 @@ export default async function CalendarPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Eyebrow>a month at a glance</Eyebrow>
           <h1 className="mt-2 font-display text-3xl font-medium text-ink">
             {MONTHS[month - 1]} {year}
           </h1>
         </div>
-        <div className="flex flex-none items-center gap-2">
-          <Link
-            href={`/calendar?month=${ymParam(prev.y, prev.m)}`}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-ink-soft hover:text-accent-ink hover:border-accent-ink/40"
-            aria-label="Bulan sebelumnya"
-          >
-            ‹
-          </Link>
-          <Link
-            href={`/calendar?month=${ymParam(next.y, next.m)}`}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-ink-soft hover:text-accent-ink hover:border-accent-ink/40"
-            aria-label="Bulan berikutnya"
-          >
-            ›
-          </Link>
+        <div className="flex flex-none items-center gap-3">
+          {partner ? (
+            <PersonToggle
+              selfHref={`/calendar?month=${ymParam(year, month)}`}
+              partnerHref={`/calendar?month=${ymParam(year, month)}&who=partner`}
+              partnerName={partner.name}
+              viewingPartner={viewingPartner}
+            />
+          ) : null}
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/calendar?month=${ymParam(prev.y, prev.m)}${whoQuery}`}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-ink-soft hover:text-accent-ink hover:border-accent-ink/40"
+              aria-label="Bulan sebelumnya"
+            >
+              ‹
+            </Link>
+            <Link
+              href={`/calendar?month=${ymParam(next.y, next.m)}${whoQuery}`}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-ink-soft hover:text-accent-ink hover:border-accent-ink/40"
+              aria-label="Bulan berikutnya"
+            >
+              ›
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -115,7 +132,7 @@ export default async function CalendarPage({
           );
 
           return hasContent ? (
-            <Link key={dateISO} href={`/diary/${dateISO}`}>
+            <Link key={dateISO} href={`/diary/${dateISO}${daySuffix}`}>
               {inner}
             </Link>
           ) : (

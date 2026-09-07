@@ -50,3 +50,30 @@ export async function getSpaceContext(): Promise<SpaceContext | null> {
     role: membership.role,
   };
 }
+
+export type Partner = { id: string; name: string };
+
+/**
+ * The other member of the space (the two-person model has exactly one).
+ * Returns null if the space has no second member yet. RLS lets any member
+ * read fellow members + their profiles.
+ */
+export async function getPartner(spaceId: string, selfId: string): Promise<Partner | null> {
+  const supabase = await createClient();
+  const { data: member } = await supabase
+    .from("space_members")
+    .select("user_id")
+    .eq("space_id", spaceId)
+    .neq("user_id", selfId)
+    .limit(1)
+    .maybeSingle();
+  if (!member) return null;
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("nickname, display_name")
+    .eq("id", member.user_id)
+    .maybeSingle();
+
+  return { id: member.user_id, name: prof?.nickname || prof?.display_name || "Dia" };
+}
