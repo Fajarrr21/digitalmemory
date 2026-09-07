@@ -42,6 +42,13 @@ const CalendarIcon = s(
 const HeartIcon = s(
   <path d="M12 20s-6.5-4.3-9-8.2C1.4 9 2.5 5.7 5.7 5.2 7.8 4.9 9.4 6 12 8.6c2.6-2.6 4.2-3.7 6.3-3.4 3.2.5 4.3 3.8 2.7 6.6C18.5 15.7 12 20 12 20Z" />,
 );
+const AlbumIcon = s(
+  <>
+    <rect x="4" y="5" width="16" height="14" rx="2.5" />
+    <circle cx="9" cy="10" r="1.5" />
+    <path d="m5 17 4.5-4.5a2 2 0 0 1 2.8 0L19 19" />
+  </>,
+);
 
 export type NavItem = {
   href: string;
@@ -53,5 +60,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home", Icon: HomeIcon },
   { href: "/diary", label: "Diary", Icon: DiaryIcon },
   { href: "/calendar", label: "Calendar", Icon: CalendarIcon },
+  { href: "/album", label: "Album", Icon: AlbumIcon },
   { href: "/us", label: "Us", Icon: HeartIcon },
 ];

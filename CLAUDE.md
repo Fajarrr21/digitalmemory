@@ -77,6 +77,11 @@ migrations + setup.
   gains type `'audio'` and a `rating_id` parent, recorded in-browser via
   MediaRecorder (`components/media/voice-recorder.tsx`), attachable to a daily
   activity and to a daily rating's story; played back with a signed URL.
+- **Shared albums (done, migration 0006).** `/album` — many named albums
+  (`albums` table); BOTH members create albums and upload photos/videos, and
+  BOTH can delete any item or album (destructive deletes of the partner's files
+  run via the admin client). `media` gains an `album_id` parent. Grid + lightbox
+  viewer; uploads reuse the client compress+upload path.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

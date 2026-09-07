@@ -177,6 +177,7 @@ export type Database = {
           memory_id: string | null;
           message_id: string | null;
           rating_id: string | null;
+          album_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -195,8 +196,25 @@ export type Database = {
           memory_id?: string | null;
           message_id?: string | null;
           rating_id?: string | null;
+          album_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["media"]["Insert"]>;
+        Relationships: [];
+      };
+      albums: {
+        Row: {
+          id: string;
+          space_id: string;
+          title: string;
+          created_by: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          title: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["albums"]["Insert"]>;
         Relationships: [];
       };
       our_memories: {
