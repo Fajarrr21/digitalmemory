@@ -35,10 +35,13 @@ export function ActivityComposer({
   spaceId,
   ownerId,
   todayISO,
+  canChooseVisibility = false,
 }: {
   spaceId: string;
   ownerId: string;
   todayISO: string;
+  /** Author only: lets them keep an entry private from the keeper. */
+  canChooseVisibility?: boolean;
 }) {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -48,6 +51,7 @@ export function ActivityComposer({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(todayISO);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [items, setItems] = useState<Picked[]>([]);
   const [working, setWorking] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -93,6 +97,7 @@ export function ActivityComposer({
     setDescription("");
     setLocation("");
     setDate(todayISO);
+    setIsPrivate(false);
     setProgress(null);
     setError(null);
     setOpen(false);
@@ -153,6 +158,7 @@ export function ActivityComposer({
         description: description.trim() || undefined,
         activity_date: date,
         location: location.trim() || undefined,
+        visibility: canChooseVisibility && isPrivate ? "private" : "shared",
         media: metas,
       });
 
@@ -258,6 +264,41 @@ export function ActivityComposer({
           + Tambah foto / video
         </Button>
       </div>
+
+      {canChooseVisibility ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-rule bg-ground/60 p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-ink">
+                {isPrivate ? "Cuma buat kamu" : "Bisa dilihat berdua"}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-faint">
+                {isPrivate
+                  ? "Momen ini disembunyikan dari dia."
+                  : "Momen ini bisa dia lihat juga."}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isPrivate}
+              aria-label="Sembunyikan dari dia"
+              onClick={() => setIsPrivate((p) => !p)}
+              className={cn(
+                "relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition",
+                isPrivate ? "border-accent bg-accent" : "border-rule bg-paper-2",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-paper shadow-sm transition-all",
+                  isPrivate ? "left-[calc(100%-1.25rem)]" : "left-1",
+                )}
+              />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       {working && progress ? (

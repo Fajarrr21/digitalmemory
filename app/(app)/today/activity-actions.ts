@@ -22,6 +22,7 @@ const CreateActivitySchema = z.object({
   description: z.string().trim().max(4000).optional(),
   activity_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   location: z.string().trim().max(160).optional(),
+  visibility: z.enum(["shared", "private"]).default("shared"),
   media: z.array(MediaMetaSchema).max(MAX_FILES_PER_ACTIVITY).default([]),
 });
 
@@ -52,6 +53,7 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
       title: data.title,
       description: data.description || null,
       location: data.location || null,
+      visibility: data.visibility,
     })
     .select("id")
     .single();

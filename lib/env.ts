@@ -35,4 +35,8 @@ export const serverEnv = {
   get anthropicApiKey() {
     return process.env.ANTHROPIC_API_KEY ?? "";
   },
+  /** Fonnte WhatsApp-gateway token. Empty = notifications disabled. */
+  get fonnteToken() {
+    return process.env.FONNTE_TOKEN ?? "";
+  },
 };

@@ -40,7 +40,12 @@ export default async function TodayPage() {
 
       <section className="flex flex-col gap-4">
         <Eyebrow>today&apos;s little moments</Eyebrow>
-        <ActivityComposer spaceId={ctx.spaceId} ownerId={ctx.userId} todayISO={today} />
+        <ActivityComposer
+          spaceId={ctx.spaceId}
+          ownerId={ctx.userId}
+          todayISO={today}
+          canChooseVisibility={ctx.role === "author"}
+        />
 
         {memories.length > 0 ? (
           <div className="flex flex-col gap-4">

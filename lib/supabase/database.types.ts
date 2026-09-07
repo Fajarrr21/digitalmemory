@@ -29,6 +29,7 @@ export type Database = {
           theme: ThemePref;
           reduced_motion: boolean;
           notif_prefs: Record<string, unknown>;
+          whatsapp: string | null;
         } & Timestamps;
         Insert: {
           id: string;
@@ -40,6 +41,7 @@ export type Database = {
           theme?: ThemePref;
           reduced_motion?: boolean;
           notif_prefs?: Record<string, unknown>;
+          whatsapp?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
@@ -141,6 +143,7 @@ export type Database = {
           title: string;
           description: string | null;
           location: string | null;
+          visibility: "shared" | "private";
         } & Timestamps;
         Insert: {
           id?: string;
@@ -150,6 +153,7 @@ export type Database = {
           title: string;
           description?: string | null;
           location?: string | null;
+          visibility?: "shared" | "private";
         };
         Update: Partial<Database["public"]["Tables"]["daily_activities"]["Insert"]>;
         Relationships: [];

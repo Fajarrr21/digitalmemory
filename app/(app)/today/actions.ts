@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSpaceContext } from "@/lib/auth";
 import { localDateISO } from "@/lib/date";
+import { notifyPartnerOfRating } from "@/lib/notify/rating";
 import { MOODS } from "./rating-config";
 
 const RatingSchema = z.object({
@@ -34,11 +35,23 @@ export async function saveRating(
   }
 
   const supabase = await createClient();
+  const ratingDate = localDateISO(ctx.profile.timezone);
+
+  // Is this the first rating of the day? If so we notify the partner once.
+  // Edits later in the day don't re-send, keeping it to ~one message each.
+  const { data: prior } = await supabase
+    .from("daily_ratings")
+    .select("id")
+    .eq("user_id", ctx.userId)
+    .eq("rating_date", ratingDate)
+    .maybeSingle();
+  const isFirstToday = !prior;
+
   const { error } = await supabase.from("daily_ratings").upsert(
     {
       space_id: ctx.spaceId,
       user_id: ctx.userId,
-      rating_date: localDateISO(ctx.profile.timezone),
+      rating_date: ratingDate,
       score: parsed.data.score,
       mood: parsed.data.mood ? parsed.data.mood : null,
       reason: parsed.data.reason || null,
@@ -48,6 +61,21 @@ export async function saveRating(
   );
 
   if (error) return { error: "Gagal menyimpan. Coba lagi sebentar ya. ♡" };
+
+  if (isFirstToday) {
+    await notifyPartnerOfRating({
+      spaceId: ctx.spaceId,
+      senderId: ctx.userId,
+      senderName: ctx.profile.nickname || ctx.profile.display_name,
+      rating: {
+        score: parsed.data.score,
+        mood: parsed.data.mood || null,
+        reason: parsed.data.reason || null,
+        note: parsed.data.note || null,
+      },
+    });
+  }
+
   revalidatePath("/today");
   revalidatePath("/");
   return { ok: true };
