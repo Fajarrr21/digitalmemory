@@ -38,7 +38,7 @@ export default async function DiaryPage({
           <PersonToggle
             selfHref="/diary"
             partnerHref="/diary?who=partner"
-            partnerName={partner.name}
+            partnerName="Dia"
             viewingPartner={viewingPartner}
           />
         ) : null}
@@ -47,7 +47,7 @@ export default async function DiaryPage({
       {days.length === 0 ? (
         <PaperCard className="border-dashed text-center">
           <p className="font-hand text-xl text-accent-ink">
-            {viewingPartner ? `${partner!.name} belum nulis apa-apa` : "looks like today hasn't been written yet"}
+            {viewingPartner ? "Dia belum nulis apa-apa" : "looks like today hasn't been written yet"}
           </p>
           <p className="mt-1 text-sm text-ink-soft">
             {viewingPartner

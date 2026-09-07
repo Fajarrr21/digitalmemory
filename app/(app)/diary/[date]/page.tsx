@@ -59,7 +59,7 @@ export default async function DayDetailPage({
           {formatDateLabel(date)}
         </h1>
         {viewingPartner ? (
-          <p className="mt-1 font-mono text-sm text-ink-faint">harinya {partner!.name}</p>
+          <p className="mt-1 font-mono text-sm text-ink-faint">harinya dia</p>
         ) : null}
       </div>
 

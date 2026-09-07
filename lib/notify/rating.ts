@@ -22,7 +22,6 @@ type RatingSummary = {
 export async function notifyPartnerOfRating(args: {
   spaceId: string;
   senderId: string;
-  senderName: string;
   rating: RatingSummary;
 }): Promise<boolean> {
   try {
@@ -47,16 +46,18 @@ export async function notifyPartnerOfRating(args: {
     const to = partner?.whatsapp?.trim();
     if (!to) return false; // partner hasn't set a number — nothing to do
 
-    return await sendWhatsApp(to, buildMessage(args.senderName, args.rating));
+    return await sendWhatsApp(to, buildMessage(args.rating));
   } catch {
     // Never let a notification failure surface to the user.
     return false;
   }
 }
 
-function buildMessage(senderName: string, r: RatingSummary): string {
+function buildMessage(r: RatingSummary): string {
+  // Addressed to the recipient, so a warm role-agnostic label reads right both
+  // ways ("your love") — no dependency on messy display names/nicknames.
   const lines = [
-    `💌 ${senderName} baru mengisi rating hari ini`,
+    "💌 Kekasihmu baru mengisi rating hari ini",
     "",
     `Skor: ${r.score}/10`,
   ];

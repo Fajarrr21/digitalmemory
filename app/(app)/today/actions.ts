@@ -68,7 +68,6 @@ export async function saveRating(
     const sent = await notifyPartnerOfRating({
       spaceId: ctx.spaceId,
       senderId: ctx.userId,
-      senderName: ctx.profile.nickname || ctx.profile.display_name,
       rating: {
         score: parsed.data.score,
         mood: parsed.data.mood || null,

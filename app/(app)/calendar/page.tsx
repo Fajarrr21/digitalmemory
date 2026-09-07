@@ -66,7 +66,7 @@ export default async function CalendarPage({
             <PersonToggle
               selfHref={`/calendar?month=${ymParam(year, month)}`}
               partnerHref={`/calendar?month=${ymParam(year, month)}&who=partner`}
-              partnerName={partner.name}
+              partnerName="Dia"
               viewingPartner={viewingPartner}
             />
           ) : null}
