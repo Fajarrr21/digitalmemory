@@ -110,6 +110,40 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["daily_letters"]["Insert"]>;
         Relationships: [];
       };
+      direct_letters: {
+        Row: {
+          id: string;
+          space_id: string;
+          sender_id: string;
+          recipient_id: string;
+          title: string | null;
+          body: string;
+          song_track_id: string | null;
+          song_title: string | null;
+          song_image: string | null;
+          batch_id: string | null;
+          sort_index: number;
+          status: LetterStatus;
+          opened_at: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          sender_id: string;
+          recipient_id: string;
+          title?: string | null;
+          body: string;
+          song_track_id?: string | null;
+          song_title?: string | null;
+          song_image?: string | null;
+          batch_id?: string | null;
+          sort_index?: number;
+          status?: LetterStatus;
+          opened_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["direct_letters"]["Insert"]>;
+        Relationships: [];
+      };
       daily_ratings: {
         Row: {
           id: string;

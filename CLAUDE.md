@@ -83,6 +83,28 @@ migrations + setup.
   BOTH can delete any item or album (destructive deletes of the partner's files
   run via the admin client). `media` gains an `album_id` parent. Grid + lightbox
   viewer; uploads reuse the client compress+upload path.
+- **Direct letters — bidirectional (done, migration 0009).** Separate from the
+  auto-drip Daily Letter: `direct_letters` (`sender_id`/`recipient_id`, title,
+  body, sealed→opened) lets EITHER member write a letter on the spot to their
+  partner — so the keeper can write to the author, not only receive. RLS: both
+  read (`is_member`), you send only AS yourself to the other member, only the
+  recipient opens, sender may delete own. On `/letter`: a received inbox (sealed
+  envelopes, tap to open) + a compose box addressed to the partner. Sending fires
+  a best-effort WhatsApp heads-up (`lib/notify/letter.ts`), never blocks the send.
+  Each direct letter can carry an optional **song** (Instagram-notes style): the
+  sender pastes a Spotify track link (`song_track_id`/`song_title`/`song_image`
+  columns in 0009), and the opened letter renders the official Spotify embed
+  player. No API key — track id parsed via `lib/spotify.ts`, title/cover fetched
+  best-effort from Spotify oEmbed at send time. No CSP in the app, so the embed
+  iframe loads as-is.
+  The composer (`letter-composer.tsx`) can send **a sequence of letters at once**
+  (add/remove/reorder, ≤10, each with its own one song) via `sendLetterSequence`.
+  A 2+ sequence shares a `batch_id` with per-letter `sort_index` (0009); a single
+  letter has `batch_id = null`. **Sequential unlock**: the recipient's inbox keeps
+  letter N locked until letter N-1 is opened (computed in `page.tsx` from the
+  batch grouping; presentational gating — opening revalidates `/letter` to unlock
+  the next). Inbox orders by `created_at desc, sort_index asc` so a sequence reads
+  top→bottom 1→N with the newest send on top.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
