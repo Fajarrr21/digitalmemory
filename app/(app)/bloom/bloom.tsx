@@ -138,7 +138,7 @@ export function Bloom() {
               className="absolute inset-x-0 top-[16%] flex flex-col items-center px-8 text-center"
               initial={reduce ? false : { opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: reduce ? 0 : 2.1, duration: 0.8 }}
+              transition={{ delay: reduce ? 0 : 3.9, duration: 0.9 }}
             >
               <h1 className="font-display text-4xl font-medium text-ink text-balance sm:text-5xl">
                 {bloomConfig.finalMessage}
@@ -168,7 +168,7 @@ export function Bloom() {
               className="absolute inset-x-0 bottom-6 z-10 flex items-center justify-center gap-3"
               initial={reduce ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: reduce ? 0 : 2.6, duration: 0.6 }}
+              transition={{ delay: reduce ? 0 : 4.6, duration: 0.6 }}
             >
               <button
                 type="button"
