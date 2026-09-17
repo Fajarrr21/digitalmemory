@@ -8,6 +8,9 @@ import { BloomScene } from "./flowers";
 
 const lines = bloomConfig.openingLines;
 const song = bloomConfig.song;
+const letter = bloomConfig.letter;
+const greeting = letter.slice(0, 2); // shown over the bloom
+const body = letter.slice(2); // revealed as she scrolls
 
 // Build the hidden YouTube embed. autoplay works because we mount the iframe
 // right after a tap (a user gesture). We DON'T loop, so it keeps playing
@@ -133,28 +136,13 @@ export function Bloom() {
           >
             <BloomScene className="absolute inset-0" />
 
-            {/* the message, floating above the flowers */}
-            <motion.div
-              className="absolute inset-x-0 top-[16%] flex flex-col items-center px-8 text-center"
-              initial={reduce ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: reduce ? 0 : 3.9, duration: 0.9 }}
-            >
-              <h1 className="font-display text-4xl font-medium text-ink text-balance sm:text-5xl">
-                {bloomConfig.finalMessage}
-              </h1>
-              <p className="mt-3 max-w-xs font-hand text-2xl text-accent-ink text-balance">
-                {bloomConfig.finalSub}
-              </p>
-            </motion.div>
-
-            {/* mute toggle, only when there's a song */}
+            {/* mute toggle, only when there's a song — stays put while reading */}
             {hasSong ? (
               <motion.button
                 type="button"
                 onClick={toggleSound}
                 aria-label={muted ? "Nyalakan lagu" : "Matikan lagu"}
-                className="absolute right-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-rule bg-paper/70 text-lg backdrop-blur transition hover:border-accent-ink/40"
+                className="fixed right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-rule bg-paper/70 text-lg backdrop-blur transition hover:border-accent-ink/40"
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: reduce ? 0 : 1, duration: 0.6 }}
@@ -163,26 +151,88 @@ export function Bloom() {
               </motion.button>
             ) : null}
 
-            {/* gentle exits */}
+            {/* the letter — flowers stay behind; scroll down to read, each
+                paragraph rises in gently as it comes into view */}
             <motion.div
-              className="absolute inset-x-0 bottom-6 z-10 flex items-center justify-center gap-3"
+              className="absolute inset-0 z-20 overflow-y-auto overflow-x-hidden"
               initial={reduce ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: reduce ? 0 : 4.6, duration: 0.6 }}
+              transition={{ delay: reduce ? 0 : 3.9, duration: 1 }}
             >
-              <button
-                type="button"
-                onClick={replay}
-                className="rounded-full border border-rule bg-paper/70 px-4 py-2 text-sm text-ink-soft backdrop-blur transition hover:border-accent-ink/40 hover:text-ink"
-              >
-                {bloomConfig.replayLabel}
-              </button>
-              <Link
-                href="/"
-                className="rounded-full border border-rule bg-paper/70 px-4 py-2 text-sm text-ink-soft backdrop-blur transition hover:border-accent-ink/40 hover:text-ink"
-              >
-                {bloomConfig.backLabel}
-              </Link>
+              {/* hero: greeting over the bloom, with a scroll cue */}
+              <div className="relative flex min-h-[100dvh] flex-col items-center px-6 text-center">
+                <div className="pt-[13vh]">
+                  <h1 className="font-display text-4xl font-medium text-ink text-balance sm:text-5xl">
+                    {greeting[0]?.text}
+                  </h1>
+                  {greeting[1] ? (
+                    <p className="mt-3 font-hand text-2xl text-accent-ink text-balance">
+                      {greeting[1].text}
+                    </p>
+                  ) : null}
+                </div>
+                <motion.div
+                  className="mt-auto flex flex-col items-center gap-1 pb-12 text-ink-faint"
+                  animate={reduce ? undefined : { y: [0, 7, 0], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <span className="font-mono text-[11px] tracking-wide">
+                    {bloomConfig.scrollHint}
+                  </span>
+                  <span aria-hidden className="text-lg leading-none">
+                    ⌄
+                  </span>
+                </motion.div>
+              </div>
+
+              {/* body: the letter itself, over a scrim for readability */}
+              <div className="relative bg-gradient-to-b from-transparent via-ground/85 to-ground pt-4 pb-28">
+                <div className="mx-auto flex max-w-xl flex-col items-center gap-7 px-6 text-center">
+                  {body.map((p, i) => {
+                    const cls =
+                      p.tone === "title"
+                        ? "font-display text-3xl font-medium text-ink text-balance sm:text-4xl"
+                        : p.tone === "accent"
+                          ? "font-hand text-2xl text-accent-ink text-balance sm:text-[1.7rem]"
+                          : "max-w-prose text-[15px] leading-relaxed text-ink-soft text-pretty sm:text-base";
+                    return (
+                      <motion.p
+                        key={i}
+                        className={cls}
+                        initial={reduce ? false : { opacity: 0, y: 22 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "0px 0px -12% 0px" }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                      >
+                        {p.text}
+                      </motion.p>
+                    );
+                  })}
+
+                  {/* gentle exits at the end of the letter */}
+                  <motion.div
+                    className="mt-6 flex items-center justify-center gap-3"
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "0px 0px -8% 0px" }}
+                    transition={{ duration: 0.7 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={replay}
+                      className="rounded-full border border-rule bg-paper/70 px-4 py-2 text-sm text-ink-soft backdrop-blur transition hover:border-accent-ink/40 hover:text-ink"
+                    >
+                      {bloomConfig.replayLabel}
+                    </button>
+                    <Link
+                      href="/"
+                      className="rounded-full border border-rule bg-paper/70 px-4 py-2 text-sm text-ink-soft backdrop-blur transition hover:border-accent-ink/40 hover:text-ink"
+                    >
+                      {bloomConfig.backLabel}
+                    </Link>
+                  </motion.div>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
