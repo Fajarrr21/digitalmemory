@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { bloomConfig } from "./bloom-config";
 import { BloomScene } from "./flowers";
 
 const lines = bloomConfig.openingLines;
+const song = bloomConfig.song;
+
+// Build the hidden YouTube embed. autoplay works because we mount the iframe
+// right after a tap (a user gesture). We DON'T loop, so it keeps playing
+// forward from the chorus rather than restarting at the intro.
+function ytSrc() {
+  const p = new URLSearchParams({
+    autoplay: "1",
+    start: String(song.startSeconds),
+    enablejsapi: "1",
+    playsinline: "1",
+    controls: "0",
+    rel: "0",
+    modestbranding: "1",
+  });
+  return `https://www.youtube.com/embed/${song.youtubeId}?${p.toString()}`;
+}
 
 export function Bloom() {
   const reduce = useReducedMotion();
@@ -14,8 +31,20 @@ export function Bloom() {
   const [step, setStep] = useState(0);
   // "opening" = showing words · "bloom" = flowers are out.
   const [phase, setPhase] = useState<"opening" | "bloom">("opening");
+  const [muted, setMuted] = useState(false);
+
+  const ytRef = useRef<HTMLIFrameElement>(null);
 
   const atLastLine = step >= lines.length - 1;
+  const hasSong = song.youtubeId.length > 0;
+
+  // Talk to the YouTube iframe (enablejsapi=1) without loading the JS API.
+  function ytCommand(func: "playVideo" | "mute" | "unMute") {
+    ytRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func, args: [] }),
+      "*",
+    );
+  }
 
   function advance() {
     if (phase !== "opening") return;
@@ -26,10 +55,30 @@ export function Bloom() {
   function replay() {
     setStep(0);
     setPhase("opening");
+    setMuted(false);
+  }
+
+  function toggleSound() {
+    // Also nudge play in case autoplay was blocked by the browser.
+    ytCommand("playVideo");
+    if (muted) ytCommand("unMute");
+    else ytCommand("mute");
+    setMuted((m) => !m);
   }
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-ground text-ink">
+      {hasSong && phase === "bloom" ? (
+        <iframe
+          ref={ytRef}
+          title={song.title}
+          src={ytSrc()}
+          allow="autoplay; encrypted-media"
+          className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
+          aria-hidden
+        />
+      ) : null}
+
       {/* soft warm glow that brightens a touch when the flowers appear */}
       <motion.div
         aria-hidden
@@ -51,11 +100,11 @@ export function Bloom() {
             className="absolute inset-0 flex w-full flex-col items-center justify-center px-8 text-center"
             exit={{ opacity: 0, transition: { duration: 0.5 } }}
           >
-            <div className="min-h-[6rem] flex items-center justify-center">
+            <div className="flex min-h-[7rem] items-center justify-center">
               <AnimatePresence mode="wait">
                 <motion.p
                   key={step}
-                  className="font-display text-3xl font-medium text-ink text-balance sm:text-4xl"
+                  className="max-w-md font-display text-2xl font-medium leading-snug text-ink whitespace-pre-line text-balance sm:text-3xl"
                   initial={reduce ? false : { opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? undefined : { opacity: 0, y: -14 }}
@@ -98,6 +147,21 @@ export function Bloom() {
                 {bloomConfig.finalSub}
               </p>
             </motion.div>
+
+            {/* mute toggle, only when there's a song */}
+            {hasSong ? (
+              <motion.button
+                type="button"
+                onClick={toggleSound}
+                aria-label={muted ? "Nyalakan lagu" : "Matikan lagu"}
+                className="absolute right-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-rule bg-paper/70 text-lg backdrop-blur transition hover:border-accent-ink/40"
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: reduce ? 0 : 1, duration: 0.6 }}
+              >
+                {muted ? "🔇" : "🎵"}
+              </motion.button>
+            ) : null}
 
             {/* gentle exits */}
             <motion.div
