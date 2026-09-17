@@ -168,6 +168,19 @@ export default async function HomePage() {
           </PaperCard>
         )}
       </section>
+
+      {/* A little secret door — a faint bloom that opens the surprise (/bloom).
+          Deliberately not in the nav; discoverable if you look closely. */}
+      <Link
+        href="/bloom"
+        aria-label="Ada kejutan kecil"
+        className="group mx-auto mt-4 mb-2 inline-flex flex-col items-center gap-1 text-center opacity-40 transition hover:opacity-100 focus-visible:opacity-100"
+      >
+        <span className="text-2xl transition group-hover:scale-110">🌷</span>
+        <span className="font-hand text-sm text-accent-ink opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+          ada kejutan…
+        </span>
+      </Link>
     </div>
   );
 }
