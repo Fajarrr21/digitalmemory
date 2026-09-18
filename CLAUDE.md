@@ -105,6 +105,18 @@ migrations + setup.
   batch grouping; presentational gating — opening revalidates `/letter` to unlock
   the next). Inbox orders by `created_at desc, sort_index asc` so a sequence reads
   top→bottom 1→N with the newest send on top.
+- **Our Soundtrack (done, no DB/migration).** `/soundtrack` — a full-screen,
+  config-driven journey through 24 curated songs, each carrying a hand-written
+  message from the author. All content lives in `app/(app)/soundtrack/
+  soundtrack-config.ts` (title/artist/`youtubeId`/`startSeconds`/`cover`/
+  `message[]`); song count auto-derives from the array. Client component
+  (`soundtrack.tsx`) uses the official **YouTube IFrame Player API** (loaded once,
+  hidden audio-only player) for a real now-playing card: synced progress bar +
+  time, play/pause, click-to-seek; cover falls back to the YT thumbnail. Progress
+  hearts, resume via `localStorage` (`soundtrack:progress`), prev/next. The last
+  song's music carries into a short closing screen → **Back to our space ♡**;
+  deliberately does NOT link to `/bloom` (keeps that surprise separate). In the
+  nav as "Songs".
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

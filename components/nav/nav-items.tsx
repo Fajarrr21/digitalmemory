@@ -49,6 +49,13 @@ const AlbumIcon = s(
     <path d="m5 17 4.5-4.5a2 2 0 0 1 2.8 0L19 19" />
   </>,
 );
+const MusicIcon = s(
+  <>
+    <path d="M9 18V6l10-2v12" />
+    <circle cx="6.5" cy="18" r="2.5" />
+    <circle cx="16.5" cy="16" r="2.5" />
+  </>,
+);
 
 export type NavItem = {
   href: string;
@@ -61,5 +68,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/diary", label: "Diary", Icon: DiaryIcon },
   { href: "/calendar", label: "Calendar", Icon: CalendarIcon },
   { href: "/album", label: "Album", Icon: AlbumIcon },
+  { href: "/soundtrack", label: "Songs", Icon: MusicIcon },
   { href: "/us", label: "Us", Icon: HeartIcon },
 ];
