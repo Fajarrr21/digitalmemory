@@ -11,6 +11,7 @@ import {
   type PolaroidChapter,
   type ChecklistChapter,
 } from "./someday-config";
+import { GrowingSketch, CameraSketch, HouseDiorama } from "./someday-art";
 
 const { opening, chapters, ending, song, ui } = somedayConfig;
 
@@ -338,6 +339,17 @@ function PolaroidScene({ ch, onNext }: { ch: PolaroidChapter; onNext: () => void
 
   return (
     <div className="flex min-h-[100dvh] w-full flex-col items-center justify-center px-6 py-24 text-center">
+      {/* kilat kamera sekejap saat "memotret" — foto tetap kosong */}
+      {kept ? (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-40 bg-white"
+          initial={{ opacity: 0 }}
+          animate={reduce ? { opacity: 0 } : { opacity: [0, 0.9, 0] }}
+          transition={{ duration: 0.7, times: [0, 0.18, 1], ease: "easeOut" }}
+        />
+      ) : null}
+
       <div className="mx-auto flex max-w-md flex-col items-center">
         <ChapterHead ch={ch} />
         <p className="mb-8 font-mono text-xs uppercase tracking-[0.2em] text-ink-faint">
@@ -360,6 +372,16 @@ function PolaroidScene({ ch, onNext }: { ch: PolaroidChapter; onNext: () => void
         <p className="mt-8 max-w-xs text-pretty text-[15px] leading-relaxed text-ink-soft">
           {ch.caption}
         </p>
+
+        {!kept ? (
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+          >
+            <CameraSketch className="mt-7 h-9 w-auto text-ink-faint" />
+          </motion.div>
+        ) : null}
 
         {kept ? (
           <motion.div
@@ -482,7 +504,17 @@ function EndingScene({ onReplay }: { onReplay: () => void }) {
         transition={{ duration: 1.4, ease: "easeOut" }}
       />
 
-      <div className="relative mx-auto flex max-w-xl flex-col items-center gap-5">
+      {/* 🏠 payoff: semua elemen tadi berkumpul jadi rumah kecil, lampu menyala */}
+      {showList ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[48vh]"
+        >
+          <HouseDiorama />
+        </div>
+      ) : null}
+
+      <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center gap-5">
         {ending.lines.slice(0, linesToShow).map((line, i) => (
           <motion.p
             key={i}
@@ -657,6 +689,16 @@ export function Someday() {
           />
         ))}
       </div>
+
+      {/* 🌱 sketsa yang tumbuh tiap chapter — menyerah ke rumah utuh saat ending */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[5] h-[36vh]"
+        animate={{ opacity: isEnding ? 0 : 0.6 }}
+        transition={{ duration: 1, ease: "easeInOut" }}
+      >
+        <GrowingSketch scene={scene} />
+      </motion.div>
 
       {/* kembali satu langkah — muncul setelah layar pembuka */}
       {began ? (

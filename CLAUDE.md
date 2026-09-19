@@ -133,7 +133,13 @@ migrations + setup.
   replay / back. Optional ambient music via a hidden YouTube iframe (bloom-style
   `song.youtubeId`, mounted after "Begin" so autoplay works; `""` = no music,
   the default). Progress dots + a back-one-step arrow; full `useReducedMotion`
-  support.
+  support. **"Building Our Someday" visual layer** (`someday-art.tsx`, line-art
+  only, no photos): a persistent bottom sketch that *grows* each chapter (one dot
+  → two dots meeting → table/chairs → a window → a camera → plants → a warm
+  lamp), a camera-click white flash on the empty-polaroid chapter, and at the
+  ending all of it resolves into a small lit **house** (dusk sky, glowing window,
+  path, swaying plants, two tiny figures, gentle zoom-out) — echoing the song
+  "Kita Usahakan Rumah Itu". Purely additive: chapter flow/text unchanged.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
