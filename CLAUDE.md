@@ -117,6 +117,23 @@ migrations + setup.
   song's music carries into a short closing screen → **Back to our space ♡**;
   deliberately does NOT link to `/bloom` (keeps that surprise separate). In the
   nav as "Songs".
+- **Someday, With You (done, no DB/migration).** `/someday` — a slow, page-by-page
+  cinematic journey about memories that *haven't happened yet* (tagline "Some
+  memories haven't happened yet"). Deliberately **photo-less**: built entirely
+  from typography, motion, and abstract line art. Like `/bloom`, it's a
+  discoverable surprise and is **NOT in the nav** (reached by opening `/someday`).
+  All copy lives in `app/(app)/someday/someday-config.ts`; the client component
+  (`someday.tsx`) renders a sequence of "scenes" — opening → chapters → ending —
+  cross-fading with `motion`, over floating particles + a warm glow. Chapter
+  `kind`s: `prose` (tap-to-reveal beats, optional `art:"two-cups"` line
+  illustration + `mood:"intimate"` for the hidden reassurance chapter), `cards`
+  (tap prompt cards to reveal replies), `polaroid` (an intentionally empty frame,
+  "Keep this empty ♡"), `checklist` (a "someday list" that stays unchecked). The
+  ending darkens as it reveals a staggered someday-list, an epigraph, then
+  replay / back. Optional ambient music via a hidden YouTube iframe (bloom-style
+  `song.youtubeId`, mounted after "Begin" so autoplay works; `""` = no music,
+  the default). Progress dots + a back-one-step arrow; full `useReducedMotion`
+  support.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
