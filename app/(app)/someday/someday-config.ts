@@ -207,9 +207,9 @@ export const somedayConfig = {
   // (mis. youtu.be/XXXX -> "XXXX") untuk memutar lagu pelan selama perjalanan.
   // Biarkan "" kalau ingin tanpa musik — tombol suara otomatis disembunyikan.
   song: {
-    youtubeId: "q0fnqat88IQ", // Laufey – Like The Movies (Official Audio)
-    startSeconds: 0, // mulai dari intro piano yang lembut
-    title: "Laufey – Like The Movies",
+    youtubeId: "OXtZfPZIex4", // NIKI – Every Summertime (Visualizer)
+    startSeconds: 0,
+    title: "NIKI – Every Summertime",
   },
 
   // Label & petunjuk kecil.
