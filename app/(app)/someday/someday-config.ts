@@ -207,9 +207,9 @@ export const somedayConfig = {
   // (mis. youtu.be/XXXX -> "XXXX") untuk memutar lagu pelan selama perjalanan.
   // Biarkan "" kalau ingin tanpa musik — tombol suara otomatis disembunyikan.
   song: {
-    youtubeId: "OXtZfPZIex4", // NIKI – Every Summertime (Visualizer)
+    youtubeId: "7SqNVv98e8Q", // Sal Priadi – Kita Usahakan Rumah Itu
     startSeconds: 0,
-    title: "NIKI – Every Summertime",
+    title: "Sal Priadi – Kita Usahakan Rumah Itu",
   },
 
   // Label & petunjuk kecil.
