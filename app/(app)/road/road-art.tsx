@@ -130,6 +130,41 @@ function JourneySketch() {
   );
 }
 
+// ── kehidupan kecil di rumah sakit: palang + es kopi + game (Hospital Days) ────
+function SmallLife() {
+  const reduce = useReducedMotion();
+  return (
+    <svg viewBox="0 0 200 70" className={box} fill="none" aria-hidden>
+      <Draw d="M14 58 H186" reduce={reduce} duration={1.4} opacity={0.4} />
+      {/* gedung rumah sakit dengan palang */}
+      <g className="text-[#cdbfae]">
+        <Draw d="M34 58 V26 h26 V58" reduce={reduce} stroke="currentColor" />
+        <Draw d="M43 20 h8 v6 h6 v8 h-6 v6 h-8 v-6 h-6 v-8 h6 z" reduce={reduce} delay={0.4} stroke="currentColor" />
+      </g>
+      {/* gelas es kopi (sedotan + gelas) */}
+      <g className="text-[#f0c58a]" transform="translate(92 30)">
+        <Draw d="M0 6 h20 l-3 24 h-14 z" reduce={reduce} delay={0.6} stroke="currentColor" />
+        <Draw d="M14 6 l4 -8" reduce={reduce} delay={0.9} stroke="currentColor" />
+        <Draw d="M3 16 h14" reduce={reduce} delay={1} opacity={0.6} stroke="currentColor" />
+      </g>
+      {/* stik game kecil */}
+      <g className="text-[#eda9b2]" transform="translate(140 34)">
+        <Draw d="M6 4 h28 a6 6 0 0 1 6 6 v8 a6 6 0 0 1 -6 6 h-28 a6 6 0 0 1 -6 -6 v-8 a6 6 0 0 1 6 -6 z" reduce={reduce} delay={1.1} stroke="currentColor" />
+        <Draw d="M9 14 h6 M12 11 v6" reduce={reduce} delay={1.4} stroke="currentColor" />
+        <motion.circle
+          cx="30"
+          cy="12"
+          r="1.8"
+          fill="currentColor"
+          initial={reduce ? false : { opacity: 0 }}
+          animate={reduce ? { opacity: 0.9 } : { opacity: [0.3, 0.9, 0.3] }}
+          transition={{ delay: 1.6, duration: 2.2, repeat: reduce ? 0 : Infinity }}
+        />
+      </g>
+    </svg>
+  );
+}
+
 // ── sehelai kain putih (Goodbye, Mom) ─────────────────────────────────────────
 function WhiteCloth() {
   const reduce = useReducedMotion();
@@ -259,6 +294,8 @@ export function ChapterArt({ art }: { art: ArtKey }) {
       return <DocumentSketch />;
     case "journey":
       return <JourneySketch />;
+    case "small-life":
+      return <SmallLife />;
     case "white-cloth":
       return <WhiteCloth />;
     case "steps":

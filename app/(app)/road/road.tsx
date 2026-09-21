@@ -42,10 +42,10 @@ const PARTICLES = [
   { left: "86%", size: 2, delay: 1.7, dur: 15.5, drift: 9 },
 ];
 
-function ytSrc(id: string, muted: boolean) {
+function ytSrc(id: string, startSeconds: number, muted: boolean) {
   const p = new URLSearchParams({
     autoplay: "1",
-    start: "0",
+    start: String(startSeconds),
     enablejsapi: "1",
     playsinline: "1",
     controls: "0",
@@ -286,7 +286,7 @@ function FrameScene({ ch, onNext }: { ch: FrameChapter; onNext: () => void }) {
         </motion.div>
 
         <motion.p
-          className={`mt-7 max-w-xs text-pretty text-[15px] leading-relaxed ${INK}`}
+          className={`mt-7 max-w-xs whitespace-pre-line text-pretty text-[15px] leading-relaxed ${INK}`}
           initial={reduce ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: reduce ? 0 : 2.1, duration: 1 }}
@@ -660,7 +660,7 @@ export function Road() {
           key={songIndex}
           ref={ytRef}
           title={acts[songIndex].song.title}
-          src={ytSrc(acts[songIndex].song.youtubeId, muted)}
+          src={ytSrc(acts[songIndex].song.youtubeId, acts[songIndex].song.startSeconds, muted)}
           allow="autoplay; encrypted-media"
           className="pointer-events-none fixed bottom-0 left-0 h-px w-px opacity-0"
           aria-hidden
