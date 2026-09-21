@@ -140,6 +140,28 @@ migrations + setup.
   ending all of it resolves into a small lit **house** (dusk sky, glowing window,
   path, swaying plants, two tiny figures, gentle zoom-out) — echoing the song
   "Kita Usahakan Rumah Itu". Purely additive: chapter flow/text unchanged.
+- **The Road That Made Me (done, no DB/migration).** `/road` — a cinematic
+  night→dawn journey in THREE acts about the author's own past: the things he
+  lost, let go, and the road he's still walking. Like `/someday` & `/bloom` it's
+  a discoverable surprise, **NOT in the nav** (reached by opening `/road`). All
+  copy lives in `app/(app)/road/road-config.ts`; the client component
+  (`road.tsx`) renders opening → act cards → chapters → a final **question** →
+  one of two endings, cross-fading with `motion`. **One song per act, switched
+  automatically** (config `acts[].song.youtubeId`, hidden looping YouTube iframe
+  remounted by act, mute persisted via `&mute=`): Act I *Sesi Potret* (Enau ft.
+  Ari Lesmana), Act II *Bunga Terakhir* (Romeo), Act III *Kita Usahakan Rumah
+  Itu* (Sal Priadi); the Act II card is deliberately `silent` for a hush. A
+  three-layer sky (night/heavy/dawn) cross-fades by act so the mood literally
+  warms from night to morning; palette is explicit light-on-dark (not theme
+  tokens) since it renders on its own dark backdrop. Line-art only, no photos
+  (`road-art.tsx`): per-chapter motifs (a spark, two fires with one dimming, a
+  form, train rails + city lights, a white cloth, ascending steps, an open road,
+  two dots, a sunrise) + an intentionally empty graduation polaroid. The final
+  question ("apakah kamu masih ingin berjalan bersamaku?") offers **two choices**
+  — *tetap berjalan* → a warm ending where a small **home builds** stage by stage
+  (chairs → table → plants → house → lamp on), or *butuh waktu* → a gentle,
+  no-pressure ending that still offers to reconsider. Full `useReducedMotion`
+  support; progress dots + back-one-step arrow.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
