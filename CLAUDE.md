@@ -162,6 +162,22 @@ migrations + setup.
   (chairs → table → plants → house → lamp on), or *butuh waktu* → a gentle,
   no-pressure ending that still offers to reconsider. Full `useReducedMotion`
   support; progress dots + back-one-step arrow.
+- **How Today Felt — coloring (done, migration 0010).** An extension of the
+  daily rating on `/today`: the rating save flow is unchanged (rating + message
+  + WhatsApp), but on success it shows a "Your day is saved ♡" prompt offering
+  **Selesai** or **🎨 Gambarkan Hariku**. Colouring opens an inline canvas
+  (`how-today-felt.tsx`) — a *random* line-art scene (there's no literal mapping
+  from the score) that the user taps to fill with a 14-colour palette
+  (fill/undo/redo/reset/eraser/🎲 ganti gambar), then previews as a little
+  "A Little Piece of Today" memory card and taps **Simpan ke Diary**. Stored as
+  **vector data, not an image**: `daily_coloring` (0010) holds `template_id` +
+  a `fills` jsonb region→colour map (one per rating, `uq_coloring_per_rating`;
+  RLS mirrors `daily_ratings` — members read, owner writes). Scenes + palette
+  live in `app/(app)/today/coloring-config.ts`; the shared renderer
+  `components/coloring/coloring-svg.tsx` (`currentColor` strokes, theme-aware) is
+  reused interactively and read-only on `/today` and the diary day page
+  (`lib/coloring.ts` reads it). **Colouring never sends WhatsApp** — only the
+  rating save does.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

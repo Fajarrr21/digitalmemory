@@ -170,6 +170,26 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["daily_ratings"]["Insert"]>;
         Relationships: [];
       };
+      daily_coloring: {
+        Row: {
+          id: string;
+          space_id: string;
+          user_id: string;
+          rating_id: string;
+          template_id: string;
+          fills: Record<string, string>;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          user_id: string;
+          rating_id: string;
+          template_id: string;
+          fills?: Record<string, string>;
+        };
+        Update: Partial<Database["public"]["Tables"]["daily_coloring"]["Insert"]>;
+        Relationships: [];
+      };
       daily_activities: {
         Row: {
           id: string;

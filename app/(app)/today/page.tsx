@@ -2,12 +2,15 @@ import { getSpaceContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDayActivities } from "@/lib/activities";
 import { getRatingVoiceUrl } from "@/lib/rating-media";
+import { getColoringForRating } from "@/lib/coloring";
 import { formatDateLabel, localDateISO } from "@/lib/date";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { MemoryCard } from "@/components/memory/memory-card";
+import { ColoringSvg } from "@/components/coloring/coloring-svg";
 import { RatingFlow } from "./rating-flow";
 import { ActivityComposer } from "./activity-composer";
+import { getTemplate } from "./coloring-config";
 
 export default async function TodayPage() {
   const ctx = await getSpaceContext();
@@ -25,7 +28,10 @@ export default async function TodayPage() {
     getDayActivities(ctx.userId, today),
   ]);
 
-  const voiceUrl = rating ? await getRatingVoiceUrl(rating.id) : null;
+  const [voiceUrl, coloring] = rating
+    ? await Promise.all([getRatingVoiceUrl(rating.id), getColoringForRating(rating.id)])
+    : [null, null];
+  const coloringTemplate = coloring ? getTemplate(coloring.templateId) : undefined;
 
   return (
     <div className="flex flex-col gap-8">
@@ -44,8 +50,27 @@ export default async function TodayPage() {
           spaceId={ctx.spaceId}
           userId={ctx.userId}
           existingVoiceUrl={voiceUrl}
+          existingColoring={coloring}
         />
       </PaperCard>
+
+      {coloring && coloringTemplate ? (
+        <section className="flex flex-col gap-3">
+          <Eyebrow>how today felt</Eyebrow>
+          <PaperCard className="bg-gradient-to-br from-blush/25 to-paper">
+            <div className="mx-auto w-full max-w-[15rem] rounded-xl border border-rule bg-ground p-3">
+              <ColoringSvg
+                template={coloringTemplate}
+                fills={coloring.fills}
+                className="h-auto w-full"
+              />
+            </div>
+            <p className="mt-2 text-center font-hand text-lg text-accent-ink">
+              a little piece of today
+            </p>
+          </PaperCard>
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-4">
         <Eyebrow>today&apos;s little moments</Eyebrow>

@@ -4,10 +4,13 @@ import { getSpaceContext, getPartner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDayActivities } from "@/lib/activities";
 import { getRatingVoiceUrl } from "@/lib/rating-media";
+import { getColoringForRating } from "@/lib/coloring";
 import { formatDateLabel } from "@/lib/date";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
 import { MemoryCard } from "@/components/memory/memory-card";
+import { ColoringSvg } from "@/components/coloring/coloring-svg";
+import { getTemplate } from "../../today/coloring-config";
 import { bandLabel } from "../../today/rating-config";
 
 export default async function DayDetailPage({
@@ -45,7 +48,10 @@ export default async function DayDetailPage({
     getDayActivities(targetId, date),
   ]);
 
-  const voiceUrl = rating ? await getRatingVoiceUrl(rating.id) : null;
+  const [voiceUrl, coloring] = rating
+    ? await Promise.all([getRatingVoiceUrl(rating.id), getColoringForRating(rating.id)])
+    : [null, null];
+  const coloringTemplate = coloring ? getTemplate(coloring.templateId) : undefined;
   const empty = !rating && !letter && memories.length === 0;
 
   return (
@@ -90,6 +96,24 @@ export default async function DayDetailPage({
                 <audio src={voiceUrl} controls preload="metadata" className="h-9 min-w-0 flex-1" />
               </div>
             ) : null}
+          </PaperCard>
+        </section>
+      ) : null}
+
+      {coloring && coloringTemplate ? (
+        <section className="flex flex-col gap-2">
+          <Eyebrow>a little piece of today</Eyebrow>
+          <PaperCard className="bg-gradient-to-br from-blush/25 to-paper">
+            <div className="mx-auto w-full max-w-[16rem] rounded-xl border border-rule bg-ground p-3">
+              <ColoringSvg
+                template={coloringTemplate}
+                fills={coloring.fills}
+                className="h-auto w-full"
+              />
+            </div>
+            <p className="mt-2 text-center font-hand text-lg text-accent-ink">
+              how today felt
+            </p>
           </PaperCard>
         </section>
       ) : null}

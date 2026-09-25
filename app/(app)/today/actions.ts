@@ -7,6 +7,7 @@ import { getSpaceContext } from "@/lib/auth";
 import { localDateISO } from "@/lib/date";
 import { notifyPartnerOfRating } from "@/lib/notify/rating";
 import { MOODS } from "./rating-config";
+import { PALETTE_VALUES, fillableIds, getTemplate } from "./coloring-config";
 
 const RatingSchema = z.object({
   score: z.coerce.number().int().min(1, "Pilih dulu angka harimu.").max(10),
@@ -21,7 +22,15 @@ const RatingSchema = z.object({
   voice_clear: z.string().optional(), // "1" = remove existing voice note
 });
 
-export type RatingState = { ok?: boolean; error?: string };
+export type RatingState = {
+  ok?: boolean;
+  error?: string;
+  // Returned on success so the client can offer the "How Today Felt" coloring
+  // step, which attaches to this rating.
+  ratingId?: string;
+  ratingDate?: string;
+  score?: number;
+};
 
 export async function saveRating(
   _prev: RatingState,
@@ -129,5 +138,87 @@ export async function saveRating(
 
   revalidatePath("/today");
   revalidatePath("/");
+  return {
+    ok: true,
+    ratingId: ratingRow.id,
+    ratingDate,
+    score: parsed.data.score,
+  };
+}
+
+// ---- How Today Felt (coloring) --------------------------------------------
+
+const ColoringSchema = z.object({
+  rating_id: z.string().uuid(),
+  template_id: z.string().min(1).max(60),
+  // A region id → palette colour value map, sanitised below against the template.
+  fills: z.record(z.string(), z.string()),
+});
+
+export type ColoringState = { ok?: boolean; error?: string };
+
+/**
+ * Save (or replace) the coloring for a day's rating. Vector only — we store the
+ * template id + the region→colour map, never a rendered image. Deliberately
+ * does NOT notify over WhatsApp (only the rating save does).
+ */
+export async function saveColoring(
+  _prev: ColoringState,
+  formData: FormData,
+): Promise<ColoringState> {
+  const ctx = await getSpaceContext();
+  if (!ctx) return { error: "Sesi kamu habis. Masuk lagi ya." };
+
+  let fillsRaw: unknown = {};
+  try {
+    fillsRaw = JSON.parse((formData.get("fills") as string) || "{}");
+  } catch {
+    return { error: "Gambarnya gagal dibaca. Coba lagi ya. ♡" };
+  }
+
+  const parsed = ColoringSchema.safeParse({
+    rating_id: formData.get("rating_id"),
+    template_id: formData.get("template_id"),
+    fills: fillsRaw,
+  });
+  if (!parsed.success) return { error: "Coba warnai lagi ya. ♡" };
+
+  const template = getTemplate(parsed.data.template_id);
+  if (!template) return { error: "Gambarnya nggak dikenali. Coba lagi ya." };
+
+  // Keep only real fillable regions painted with real palette colours.
+  const allowed = fillableIds(template);
+  const fills: Record<string, string> = {};
+  for (const [regionId, value] of Object.entries(parsed.data.fills)) {
+    if (allowed.has(regionId) && PALETTE_VALUES.has(value)) fills[regionId] = value;
+  }
+
+  const supabase = await createClient();
+
+  // The rating must exist and belong to the acting user (RLS also enforces this
+  // on write, but a clear message beats a silent constraint failure).
+  const { data: rating } = await supabase
+    .from("daily_ratings")
+    .select("id, rating_date")
+    .eq("id", parsed.data.rating_id)
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (!rating) return { error: "Rating harinya nggak ketemu. Simpan dulu ya." };
+
+  const { error } = await supabase.from("daily_coloring").upsert(
+    {
+      space_id: ctx.spaceId,
+      user_id: ctx.userId,
+      rating_id: rating.id,
+      template_id: template.id,
+      fills,
+    },
+    { onConflict: "rating_id" },
+  );
+  if (error) return { error: "Gagal menyimpan gambarnya. Coba lagi ya. ♡" };
+
+  revalidatePath("/today");
+  revalidatePath("/diary");
+  revalidatePath(`/diary/${rating.rating_date}`);
   return { ok: true };
 }
