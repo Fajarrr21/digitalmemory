@@ -177,7 +177,13 @@ migrations + setup.
   `components/coloring/coloring-svg.tsx` (`currentColor` strokes, theme-aware) is
   reused interactively and read-only on `/today` and the diary day page
   (`lib/coloring.ts` reads it). **Colouring never sends WhatsApp** — only the
-  rating save does.
+  rating save does. **Share to story**: after saving (and on the diary day
+  page) a "📤 Bagikan ke story" button (`components/coloring/
+  coloring-share-button.tsx`) renders the memory card as a 1080×1920 PNG on a
+  canvas (`components/coloring/share-card.ts`, fixed warm light palette +
+  next/font families) and hands it to `navigator.share` with the file — on a
+  phone that surfaces IG Story / WA Status; desktops without file share get a
+  download instead.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

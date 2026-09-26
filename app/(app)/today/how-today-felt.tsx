@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ColoringSvg, type Fills } from "@/components/coloring/coloring-svg";
+import { ColoringShareButton } from "@/components/coloring/coloring-share-button";
 import { formatDateLabel } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import {
@@ -230,9 +231,17 @@ export function HowTodayFelt({
           {saved ? (
             <div className="flex flex-col items-center gap-3">
               <p className="text-sm text-accent-ink">Tersimpan di diary ✓</p>
-              <Button type="button" size="md" onClick={onClose}>
-                Selesai
-              </Button>
+              <div className="flex flex-wrap items-start justify-center gap-3">
+                <ColoringShareButton
+                  template={template}
+                  fills={fills}
+                  score={score}
+                  dateISO={dateISO}
+                />
+                <Button type="button" size="md" onClick={onClose}>
+                  Selesai
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-center gap-3">

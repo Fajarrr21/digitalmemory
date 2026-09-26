@@ -10,6 +10,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
 import { MemoryCard } from "@/components/memory/memory-card";
 import { ColoringSvg } from "@/components/coloring/coloring-svg";
+import { ColoringShareButton } from "@/components/coloring/coloring-share-button";
 import { getTemplate } from "../../today/coloring-config";
 import { bandLabel } from "../../today/rating-config";
 
@@ -100,7 +101,7 @@ export default async function DayDetailPage({
         </section>
       ) : null}
 
-      {coloring && coloringTemplate ? (
+      {rating && coloring && coloringTemplate ? (
         <section className="flex flex-col gap-2">
           <Eyebrow>a little piece of today</Eyebrow>
           <PaperCard className="bg-gradient-to-br from-blush/25 to-paper">
@@ -114,6 +115,15 @@ export default async function DayDetailPage({
             <p className="mt-2 text-center font-hand text-lg text-accent-ink">
               how today felt
             </p>
+            <div className="mt-3 flex justify-center">
+              <ColoringShareButton
+                template={coloringTemplate}
+                fills={coloring.fills}
+                score={rating.score}
+                dateISO={date}
+                size="sm"
+              />
+            </div>
           </PaperCard>
         </section>
       ) : null}
