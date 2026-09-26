@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSpaceContext, getUser } from "@/lib/auth";
+import { recordPresence } from "@/lib/flame";
 import { greeting } from "@/lib/greeting";
 import { localHour } from "@/lib/date";
 import { SideRail } from "@/components/nav/side-rail";
@@ -21,6 +22,9 @@ export default async function AppLayout({
     if (!(await getUser())) redirect("/sign-in");
     return <NeedsSetup />;
   }
+
+  // Our Little Flame: opening the app *is* presence — no activity required.
+  await recordPresence(ctx.spaceId, ctx.userId, ctx.profile.timezone);
 
   const name = ctx.profile.nickname ?? ctx.profile.display_name;
   const hello = greeting(localHour(ctx.profile.timezone), name);

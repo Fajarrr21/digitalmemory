@@ -202,6 +202,28 @@ migrations + setup.
   `/meanwhile/archive` grouped by day with emotional milestone copy at
   7/10/25 ("little collection"). Client experience in `meanwhile.tsx`
   (motion, typewriter title, floating dust, full reduced-motion support).
+- **Our Little Flame (done, migration 0012).** Presence streak: a flame day =
+  BOTH members opened the app that calendar day (own profile timezone).
+  Presence recorded by `recordPresence` in the authed layout on any page view
+  (`presence_days`, insert-only) — deliberately NO forced midnight logout and
+  no activity requirement: opening the app *is* showing up. Streak math is
+  pure + unit-tested (`lib/flame-logic.ts` + `.test.ts`), computed on read
+  from presence rows — statuses lit / waiting ("🕯️ waiting for one more") /
+  quiet / out, plus derived run history (never deleted). **Flame Recovery**:
+  a one-day gap can be patched via `flame_recoveries` (unique per space+day,
+  either member, max 5 per calendar month) — a deliberate button ("Restore
+  Flame" / "Let it rest"), never automatic. The flame **evolves visually** by
+  tier (`flame-config.ts`: First Spark → … → Eternal Flame; scale/colors/
+  glow/particles/sparkles) via `components/flame/flame.tsx` (CSS teardrop
+  layers + motion, reduced-motion safe). `/flame`: big flame, month calendar
+  (🔥 days, 🕯️ bridged), milestones (1/3/10/30/50/100/150/200/365, each with
+  its own line) with **story share cards** (canvas 1080×1920, both avatars +
+  quote, `share-flame-card.ts`, navigator.share → IG/WA), history, recovery
+  count. Profile revamped: photo (upload/replace/remove, centre-square crop +
+  resize client-side to `…/avatar/`, used on profile/flame/share card), name +
+  "nickname", flame summary card → View Streak, editable name/nickname/
+  birthday (`edit-profile.tsx`). Tone rule: never guilt, no countdowns —
+  "We both showed up today."
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

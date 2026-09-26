@@ -233,6 +233,38 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["meanwhile_moments"]["Insert"]>;
         Relationships: [];
       };
+      presence_days: {
+        Row: {
+          space_id: string;
+          user_id: string;
+          day: string;
+          created_at: string;
+        };
+        Insert: {
+          space_id: string;
+          user_id: string;
+          day: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["presence_days"]["Insert"]>;
+        Relationships: [];
+      };
+      flame_recoveries: {
+        Row: {
+          id: string;
+          space_id: string;
+          day: string;
+          restored_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          day: string;
+          restored_by: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["flame_recoveries"]["Insert"]>;
+        Relationships: [];
+      };
       daily_activities: {
         Row: {
           id: string;
