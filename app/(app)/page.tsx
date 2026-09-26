@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getSpaceContext, getPartner } from "@/lib/auth";
 import { getAwayStatus, isJustBack } from "@/lib/meanwhile";
+import { getFlameData } from "@/lib/flame";
+import { signPaths } from "@/lib/media";
+import { MilestoneCelebration } from "@/components/flame/milestone-celebration";
 import { awayInfo } from "./meanwhile/meanwhile-config";
 import { formatDateLabel, localDateISO, localHour } from "@/lib/date";
 import { daypart } from "@/lib/greeting";
@@ -33,6 +36,21 @@ export default async function HomePage() {
     getPartner(ctx.spaceId, ctx.userId),
   ]);
   const partnerAway = partner ? await getAwayStatus(ctx.spaceId, partner.id) : null;
+
+  // Our Little Flame: milestone popup data (photos + streak) for this visit.
+  const flame = await getFlameData(
+    ctx.spaceId,
+    ctx.userId,
+    partner?.id ?? null,
+    ctx.profile.timezone,
+  );
+  const { data: partnerProfile } = partner
+    ? await supabase.from("profiles").select("avatar_path").eq("id", partner.id).maybeSingle()
+    : { data: null };
+  const avatarPaths = [ctx.profile.avatar_path, partnerProfile?.avatar_path].filter(
+    (p): p is string => !!p,
+  );
+  const signedAvatars = await signPaths(avatarPaths);
 
   // The Meanwhile card adapts to the partner's manual away status.
   let meanwhileEyebrow = "meanwhile…";
@@ -72,6 +90,20 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <MilestoneCelebration
+        streak={flame.state.streak}
+        youName={ctx.profile.nickname || ctx.profile.display_name}
+        partnerName={partner?.name ?? "Dia"}
+        youAvatarUrl={
+          ctx.profile.avatar_path ? (signedAvatars[ctx.profile.avatar_path] ?? null) : null
+        }
+        partnerAvatarUrl={
+          partnerProfile?.avatar_path
+            ? (signedAvatars[partnerProfile.avatar_path] ?? null)
+            : null
+        }
+      />
+
       <p className="font-mono text-sm text-ink-faint">{formatDateLabel(today)}</p>
 
       {/* Daily Letter — the first thing she should reach for */}

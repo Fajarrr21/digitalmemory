@@ -223,7 +223,14 @@ migrations + setup.
   resize client-side to `…/avatar/`, used on profile/flame/share card), name +
   "nickname", flame summary card → View Streak, editable name/nickname/
   birthday (`edit-profile.tsx`). Tone rule: never guilt, no countdowns —
-  "We both showed up today."
+  "We both showed up today." **Milestone popup**: opening Home when a
+  milestone was newly reached shows a one-time (per device, localStorage
+  `flame:celebrated:*`) full-screen celebration (`components/flame/
+  milestone-celebration.tsx`: flame + DAY N + both photos + quote + manual
+  Share-to-story); only the highest un-celebrated milestone shows, then all
+  below are marked seen. **Avatar adjuster**: the profile photo opens an
+  IG-style crop modal (pan by drag + zoom slider in a circular viewport,
+  canvas-exported square) before upload.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
