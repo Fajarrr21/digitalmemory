@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getSpaceContext } from "@/lib/auth";
+import { getSpaceContext, getPartner } from "@/lib/auth";
+import { getAwayStatus, isJustBack } from "@/lib/meanwhile";
+import { awayInfo } from "./meanwhile/meanwhile-config";
 import { formatDateLabel, localDateISO, localHour } from "@/lib/date";
 import { daypart } from "@/lib/greeting";
 import { resolveDailyLetter } from "@/lib/letters";
@@ -19,7 +21,7 @@ export default async function HomePage() {
   const resolved = await resolveDailyLetter(ctx.spaceId, ctx.userId);
 
   const supabase = await createClient();
-  const [{ data: rating }, memories, forYou] = await Promise.all([
+  const [{ data: rating }, memories, forYou, partner] = await Promise.all([
     supabase
       .from("daily_ratings")
       .select("score")
@@ -28,7 +30,24 @@ export default async function HomePage() {
       .maybeSingle(),
     getDayActivities(ctx.userId, today),
     getForYouMessages(ctx.spaceId),
+    getPartner(ctx.spaceId, ctx.userId),
   ]);
+  const partnerAway = partner ? await getAwayStatus(ctx.spaceId, partner.id) : null;
+
+  // The Meanwhile card adapts to the partner's manual away status.
+  let meanwhileEyebrow = "meanwhile…";
+  let meanwhileTitle = "Something is waiting for you.";
+  let meanwhileSub = "We're probably doing our own things right now.";
+  if (partner && partnerAway?.active) {
+    const info = awayInfo(partnerAway.kind);
+    meanwhileEyebrow = `${info.emoji} ${partner.name} ${info.doing}`;
+    meanwhileTitle = "Meanwhile, there's something for you.";
+    meanwhileSub = "Go have your own little moment. ♡";
+  } else if (partner && isJustBack(partnerAway)) {
+    meanwhileEyebrow = `${partner.name} is back ♡`;
+    meanwhileTitle = "Did you have your little moment?";
+    meanwhileSub = "There's still something waiting, if not.";
+  }
 
   const isEvening = ["evening", "night"].includes(daypart(localHour(ctx.profile.timezone)));
   const unopenedForYou =
@@ -110,6 +129,21 @@ export default async function HomePage() {
           </PaperCard>
         </Link>
       </div>
+
+      {/* Meanwhile — a little something while we're doing our own things */}
+      <Link href="/meanwhile" className="group block">
+        <PaperCard className="relative overflow-hidden transition group-hover:-translate-y-0.5">
+          <Eyebrow>{meanwhileEyebrow}</Eyebrow>
+          <p className="mt-3 font-display text-lg font-medium text-ink">{meanwhileTitle}</p>
+          <p className="mt-1 text-sm text-ink-soft">{meanwhileSub}</p>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
+          >
+            🌙
+          </span>
+        </PaperCard>
+      </Link>
 
       {/* Secondary entries */}
       <div className="flex flex-wrap gap-3">

@@ -9,6 +9,8 @@ export type LetterStatus = "sealed" | "opened";
 export type MediaType = "image" | "video" | "audio";
 export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
+export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
+export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
 
 type Timestamps = {
   created_at: string;
@@ -188,6 +190,47 @@ export type Database = {
           fills?: Record<string, string>;
         };
         Update: Partial<Database["public"]["Tables"]["daily_coloring"]["Insert"]>;
+        Relationships: [];
+      };
+      away_status: {
+        Row: {
+          space_id: string;
+          user_id: string;
+          kind: AwayKind;
+          active: boolean;
+        } & Timestamps;
+        Insert: {
+          space_id: string;
+          user_id: string;
+          kind: AwayKind;
+          active?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["away_status"]["Insert"]>;
+        Relationships: [];
+      };
+      meanwhile_moments: {
+        Row: {
+          id: string;
+          space_id: string;
+          user_id: string;
+          category: MeanwhileCategory;
+          prompt: string;
+          payload: Record<string, unknown>;
+          shared: boolean;
+          moment_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          user_id: string;
+          category: MeanwhileCategory;
+          prompt: string;
+          payload?: Record<string, unknown>;
+          shared?: boolean;
+          moment_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meanwhile_moments"]["Insert"]>;
         Relationships: [];
       };
       daily_activities: {

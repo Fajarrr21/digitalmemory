@@ -184,6 +184,24 @@ migrations + setup.
   next/font families) and hands it to `navigator.share` with the file — on a
   phone that surfaces IG Story / WA Status; desktops without file share get a
   download instead.
+- **Meanwhile… (done, migration 0011).** `/meanwhile` — a little space to visit
+  while the other is busy living their own life. Home card adapts to the
+  partner's **manual away status** (`away_status`: working/playing/outside/
+  sleeping/busy; set on /meanwhile, NO live tracking ever). Each visit draws
+  ONE random **Moment** from a config pool (`meanwhile-config.ts`): 💭 tiny
+  question · 🎲 pick one · 📸 tiny photo (storage `…/meanwhile/`, key kept in
+  payload — not the `media` table) · 🎧 Spotify song (oEmbed like letters) ·
+  🎨 little creation (reuses coloring templates) · 🫶 from-me (rare, ✏️ author-
+  edited config) · ✉️ micro-letter (very rare) · 🧩 memory/find-the-heart/
+  reaction · 🌱 slow down (10s countdown) · 😈 silly. Rules: skip is always
+  free ("Not feeling it →"), ONE moment per visit (localStorage-gated soft
+  gate), keeping is optional, sharing is manual ("Send to partner" =
+  `shared` flag, RLS lets the partner read only shared rows), and NOTHING
+  notifies (no WhatsApp here by design). Kept moments live in
+  `meanwhile_moments` (payload jsonb per category) and show in
+  `/meanwhile/archive` grouped by day with emotional milestone copy at
+  7/10/25 ("little collection"). Client experience in `meanwhile.tsx`
+  (motion, typewriter title, floating dust, full reduced-motion support).
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
