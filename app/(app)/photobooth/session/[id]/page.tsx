@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getPartner, getSpaceContext } from "@/lib/auth";
-import { getFlameData } from "@/lib/flame";
-import { formatDateLabel, localDateISO } from "@/lib/date";
+import { getSpaceContext } from "@/lib/auth";
+import { localDateISO } from "@/lib/date";
 import { PaperCard } from "@/components/ui/paper-card";
 import { getBoothState } from "../../actions";
 import { DuoBooth } from "./duo-booth";
@@ -42,19 +41,12 @@ export default async function BoothSessionPage({
     );
   }
 
-  const partner = await getPartner(ctx.spaceId, ctx.userId);
-  const flame = await getFlameData(ctx.spaceId, ctx.userId, partner?.id ?? null, ctx.profile.timezone);
-  const bestFlameDay = Math.max(flame.state.streak, ...flame.state.runs.map((r) => r.length), 0);
-  const today = localDateISO(ctx.profile.timezone);
-
   return (
     <DuoBooth
       initial={initial.session}
       spaceId={ctx.spaceId}
       selfId={ctx.userId}
-      dateISO={today}
-      dateLabel={formatDateLabel(today)}
-      bestFlameDay={bestFlameDay}
+      dateISO={localDateISO(ctx.profile.timezone)}
     />
   );
 }

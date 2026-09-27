@@ -8,27 +8,21 @@ import { createBoothSession } from "./actions";
 import { cn } from "@/lib/utils";
 
 /**
- * The booth doorway — "Who's in the frame?". Just Me runs right here;
- * Both of Us creates a session and moves to its own page (whose link is the
- * invitation).
+ * The booth doorway — "Who's in the frame?" comes FIRST; the frame is chosen
+ * afterwards with the camera already live. Just Me runs right here; Both of Us
+ * creates a session and moves to its own page (whose link is the invitation).
  */
 export function BoothEntry({
   spaceId,
   userId,
-  name,
   partnerName,
   dateISO,
-  dateLabel,
-  bestFlameDay,
   initialFrameId,
 }: {
   spaceId: string;
   userId: string;
-  name: string;
   partnerName: string | null;
   dateISO: string;
-  dateLabel: string;
-  bestFlameDay: number;
   initialFrameId: string | null;
 }) {
   const router = useRouter();
@@ -39,7 +33,7 @@ export function BoothEntry({
   function createDuo() {
     startCreate(async () => {
       setError(null);
-      const res = await createBoothSession(4, initialFrameId ?? undefined);
+      const res = await createBoothSession(initialFrameId ?? undefined);
       if (!res.ok || !res.id) {
         setError(res.error ?? "Gagal menyiapkan photobooth.");
         return;
@@ -53,10 +47,7 @@ export function BoothEntry({
       <SoloBooth
         spaceId={spaceId}
         userId={userId}
-        name={name}
         dateISO={dateISO}
-        dateLabel={dateLabel}
-        bestFlameDay={bestFlameDay}
         initialFrameId={initialFrameId}
         onBack={() => setMode("choose")}
       />
@@ -82,7 +73,7 @@ export function BoothEntry({
             <p className="text-3xl">👤</p>
             <p className="mt-3 font-display text-xl font-medium text-ink">Just Me</p>
             <p className="mt-1 text-sm text-ink-soft">
-              A little photo for yourself. Frame it, keep it.
+              Kamera langsung nyala — tinggal pilih frame &amp; jepret.
             </p>
           </PaperCard>
         </button>

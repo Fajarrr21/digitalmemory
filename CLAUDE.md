@@ -231,30 +231,39 @@ migrations + setup.
   below are marked seen. **Avatar adjuster**: the profile photo opens an
   IG-style crop modal (pan by drag + zoom slider in a circular viewport,
   canvas-exported square) before upload.
-- **A Little Photo Booth (done, migration 0013 — ⚠ run it in the SQL editor
-  before using Both of Us).** `/photobooth` — "Two people. One little frame."
-  Entry card on Home (not in the nav). Two modes: **👤 Just Me** is fully
-  client-side (no DB) — pick Classic/4-shot + a frame, countdown 3-2-1 capture
-  (mirrored square, `camera.tsx`), strip composed on canvas; **♡ Both of Us**
-  creates a `photobooth_sessions` row whose id IS the invite link
-  (`/photobooth/session/{id}`, RLS `is_member` keeps outsiders away; signed-out
-  partner round-trips via `/sign-in?next=…`). Waiting → join → lobby ("You're
-  both here ♡", shared frame + shot-count, either member sets them) → each
-  shoots on their own camera (per-shot prompts, uploads to storage
-  `…/photobooth/{session}/`, rows in `photobooth_photos` — one row per
-  (member, shot) so simultaneous uploads can't clobber), partner photos stay
-  hidden until the shared reveal; sync is plain polling (2.5s, `getBoothState`),
-  no realtime infra. Unjoined sessions expire after 24h. Frames live in
-  `photobooth-config.ts` (Minimal/Cute/Romantic/Film Strip/Newspaper/Dreamy/
-  Silly + 🔥 DAY-N milestone frames derived from flame MILESTONES, auto-unlocked
-  by the best flame ever); one canvas renderer `compose-strip.ts` draws
-  1080×1920 story-sized PNGs (fixed palettes, per-frame deco + photo filter).
-  Result actions: ↓ Download · ♡ Save (find-or-create album "My Photobooth" /
-  "Our Photobooth" via `ensureBoothAlbum` + existing `addAlbumMedia` path) ·
+- **A Little Photo Booth (done, migrations 0013 + 0014 — run both in the SQL
+  editor).** `/photobooth` — "Two people. One little frame." Entry card on
+  Home (not in the nav). Mode is chosen FIRST (Just Me / Both of Us), then the
+  frame is picked **live**: the camera shows through the chosen frame's photo
+  window with a thumbnail carousel underneath (`booth-stage.tsx`, the shared
+  stage for both modes). **Frames are real image templates** (29 of them,
+  `public/photobooth/frames/*.webp`, ~4 MB): curated from the user's
+  frame-photobooth pack, their photo windows punched TRANSPARENT offline
+  (scratchpad sharp tooling — flat-region detection + small-hole fill), so
+  photos render BEHIND the template: tilted polaroids / curved TV screens clip
+  themselves and decorations overlapping a window stay on top. Normalized slot
+  bboxes live in `photobooth-config.ts` (`BOOTH_TEMPLATES`, 1–4 slots each);
+  `compose-strip.ts` exports the strip at template aspect, 1920px tall.
+  **👤 Just Me** is fully client-side (no DB): shoot each window in turn
+  (3-2-1 countdown, mirrored, optional 🎲 pose prompt), tap a filled window to
+  retake, ✨ compose → reveal → result. **♡ Both of Us** (session row id IS the
+  invite link `/photobooth/session/{id}`; RLS `is_member`; signed-out partner
+  round-trips via `/sign-in?next=…`): waiting → join → lobby ("You're both
+  here ♡" — frame picked together on the live stage, either member; shot_count
+  follows the template, migration 0014 relaxes the old (1,4) check) → **slots
+  alternate creator⇄partner top-to-bottom**, each shoots their own windows on
+  their own camera (uploads to `…/photobooth/{session}/`, one row per
+  (member, shot) in `photobooth_photos`), partner windows show 🤫 until the
+  shared reveal; sync is plain polling (2.5s `getBoothState`), no realtime.
+  Unjoined sessions expire after 24h. 1-slot templates are solo-only
+  (`DUO_TEMPLATES` filter). Result actions: ↓ Download · ♡ Save (album
+  "My Photobooth"/"Our Photobooth" via `ensureBoothAlbum` + `addAlbumMedia`) ·
   ↗ Share (navigator.share → IG Story / WA Status, download fallback). Flame
-  ties in: milestone celebration + achieved milestones on `/flame` link to
-  `/photobooth?frame=day-N` ("A little milestone deserves a little memory").
-  No WhatsApp anywhere in the booth — invites are shared by hand.
+  milestone celebration links to `/photobooth` ("A little milestone deserves a
+  little memory"). No WhatsApp anywhere in the booth — invites are shared by
+  hand. Frame tooling lives in the session scratchpad (detect-slots.mjs /
+  build-frames.mjs) — regenerate configs from new template JPGs if more frames
+  are ever added.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

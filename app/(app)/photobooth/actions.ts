@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSpaceContext } from "@/lib/auth";
 import { signPaths } from "@/lib/media";
 import type { BoothStatus } from "@/lib/supabase/database.types";
-import { frameById } from "./photobooth-config";
+import { DUO_TEMPLATES, templateById } from "./photobooth-config";
 
 /**
  * Both of Us photobooth — session lifecycle. Every action re-checks the space
@@ -35,27 +35,27 @@ export type BoothSnapshot = {
   photos: BoothPhoto[];
 };
 
-const ShotCountSchema = z.union([z.literal(1), z.literal(4)]);
 const ShotIndexSchema = z.number().int().min(0).max(3);
 
-export async function createBoothSession(
-  shotCount: number,
-  frameId?: string,
-): Promise<BoothResult> {
+/** The chosen template for a DUO session — must have a window for each of us. */
+function duoTemplate(frameId: string | null | undefined) {
+  const t = templateById(frameId);
+  return t.slots.length >= 2 ? t : DUO_TEMPLATES[0];
+}
+
+export async function createBoothSession(frameId?: string): Promise<BoothResult> {
   const ctx = await getSpaceContext();
   if (!ctx) return { error: "Sesi kamu habis. Masuk lagi ya." };
 
-  const shots = ShotCountSchema.safeParse(shotCount);
-  if (!shots.success) return { error: "Jumlah foto tidak valid." };
-
+  const template = duoTemplate(frameId ?? null);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("photobooth_sessions")
     .insert({
       space_id: ctx.spaceId,
       creator_id: ctx.userId,
-      shot_count: shots.data,
-      frame_id: frameById(frameId ?? null).id,
+      shot_count: template.slots.length,
+      frame_id: template.id,
     })
     .select("id")
     .single();
@@ -152,37 +152,21 @@ export async function joinBoothSession(sessionId: string): Promise<BoothResult> 
   return { ok: true };
 }
 
-/** Either member may re-pick the frame until the strip is revealed. */
-export async function setBoothFrame(sessionId: string, frameId: string): Promise<BoothResult> {
+/** Either member may re-pick the frame while still in the lobby. The shot
+ *  count always follows the template's window count. */
+export async function setBoothTemplate(sessionId: string, frameId: string): Promise<BoothResult> {
   const ctx = await getSpaceContext();
   if (!ctx) return { error: "Sesi kamu habis. Masuk lagi ya." };
 
+  const template = duoTemplate(frameId);
   const supabase = await createClient();
   const { error } = await supabase
     .from("photobooth_sessions")
-    .update({ frame_id: frameById(frameId).id })
-    .eq("id", sessionId)
-    .eq("space_id", ctx.spaceId)
-    .neq("status", "completed");
-  if (error) return { error: "Gagal memilih frame." };
-  return { ok: true };
-}
-
-export async function setBoothShots(sessionId: string, shotCount: number): Promise<BoothResult> {
-  const ctx = await getSpaceContext();
-  if (!ctx) return { error: "Sesi kamu habis. Masuk lagi ya." };
-
-  const shots = ShotCountSchema.safeParse(shotCount);
-  if (!shots.success) return { error: "Jumlah foto tidak valid." };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("photobooth_sessions")
-    .update({ shot_count: shots.data })
+    .update({ frame_id: template.id, shot_count: template.slots.length })
     .eq("id", sessionId)
     .eq("space_id", ctx.spaceId)
     .in("status", ["waiting", "joined"]);
-  if (error) return { error: "Gagal mengatur mode." };
+  if (error) return { error: "Gagal memilih frame." };
   return { ok: true };
 }
 
@@ -264,11 +248,12 @@ export async function completeBooth(sessionId: string): Promise<BoothResult> {
   if (s.status === "completed") return { ok: true };
   if (!s.participant_id) return { error: "Pasanganmu belum bergabung." };
 
+  // One photo per window (slots alternate between the two of you).
   const { count } = await supabase
     .from("photobooth_photos")
     .select("*", { count: "exact", head: true })
     .eq("session_id", sessionId);
-  if ((count ?? 0) < s.shot_count * 2) return { error: "Fotonya belum lengkap." };
+  if ((count ?? 0) < s.shot_count) return { error: "Fotonya belum lengkap." };
 
   const { error } = await supabase
     .from("photobooth_sessions")

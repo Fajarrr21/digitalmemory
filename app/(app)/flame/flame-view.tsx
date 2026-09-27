@@ -137,7 +137,7 @@ export function FlameView({
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href={`/photobooth?frame=day-${celebration.day}`}
+              href="/photobooth"
               className="inline-flex h-11 items-center rounded-full bg-accent px-6 text-[15px] font-medium text-[#4a2b30] shadow-[var(--shadow-lift)] transition hover:brightness-[1.03]"
             >
               📸 Take a Photo
@@ -216,23 +216,14 @@ export function FlameView({
                     ) : null}
                   </div>
                   {achieved ? (
-                    <div className="flex flex-none items-center gap-2">
-                      <Link
-                        href={`/photobooth?frame=day-${m.day}`}
-                        title="Take a photo with this milestone frame"
-                        className="inline-flex h-9 items-center rounded-full border border-rule px-3 text-sm text-ink-soft transition hover:border-accent-ink/40 hover:text-accent-ink"
-                      >
-                        📸
-                      </Link>
-                      <ShareMilestoneButton
-                        milestone={m}
-                        youName={youName}
-                        partnerName={partnerName}
-                        youAvatarUrl={youAvatarUrl}
-                        partnerAvatarUrl={partnerAvatarUrl}
-                        small
-                      />
-                    </div>
+                    <ShareMilestoneButton
+                      milestone={m}
+                      youName={youName}
+                      partnerName={partnerName}
+                      youAvatarUrl={youAvatarUrl}
+                      partnerAvatarUrl={partnerAvatarUrl}
+                      small
+                    />
                   ) : null}
                 </li>
               );
