@@ -101,12 +101,27 @@ export function BoothStage({
     };
   }, [startCamera, wantCamera]);
 
+  // The <video> element unmounts while a shot is pending (Keep/Retake) and can
+  // be recreated on a frame swap — re-attach the live stream every time it
+  // (re)appears, or the viewfinder comes back black.
+  const attachVideo = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+      el.srcObject = streamRef.current;
+      void el.play().catch(() => undefined);
+    }
+  }, []);
+
   // A pending shot for a slot that no longer exists (frame swapped) is void.
   const pendingShot = pending && pending.slot < template.slots.length ? pending : null;
 
   function capture(slot: number) {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!video || !video.videoWidth) {
+      // Stream died somewhere along the way — bring the camera back.
+      void startCamera();
+      return;
+    }
     const s = template.slots[slot];
     const aspect = (s.w * template.w) / (s.h * template.h);
 
@@ -212,7 +227,7 @@ export function BoothStage({
 
         {wantCamera && currentSlot !== null && !pendingShot ? (
           <video
-            ref={videoRef}
+            ref={attachVideo}
             playsInline
             muted
             className="absolute z-10 -scale-x-100 object-cover"
