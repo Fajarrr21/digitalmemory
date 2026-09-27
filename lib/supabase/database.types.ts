@@ -10,6 +10,7 @@ export type MediaType = "image" | "video" | "audio";
 export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
 export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
+export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
 export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
 
 type Timestamps = {
@@ -231,6 +232,47 @@ export type Database = {
           moment_date: string;
         };
         Update: Partial<Database["public"]["Tables"]["meanwhile_moments"]["Insert"]>;
+        Relationships: [];
+      };
+      photobooth_sessions: {
+        Row: {
+          id: string;
+          space_id: string;
+          creator_id: string;
+          participant_id: string | null;
+          status: BoothStatus;
+          frame_id: string;
+          shot_count: number;
+          expires_at: string;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          creator_id: string;
+          participant_id?: string | null;
+          status?: BoothStatus;
+          frame_id?: string;
+          shot_count?: number;
+          expires_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["photobooth_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      photobooth_photos: {
+        Row: {
+          session_id: string;
+          user_id: string;
+          shot_index: number;
+          storage_path: string;
+          created_at: string;
+        };
+        Insert: {
+          session_id: string;
+          user_id: string;
+          shot_index: number;
+          storage_path: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["photobooth_photos"]["Insert"]>;
         Relationships: [];
       };
       presence_days: {

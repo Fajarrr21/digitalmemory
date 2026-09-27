@@ -177,6 +177,23 @@ export default async function HomePage() {
         </PaperCard>
       </Link>
 
+      {/* A Little Photo Booth */}
+      <Link href="/photobooth" className="group block">
+        <PaperCard className="relative overflow-hidden transition group-hover:-translate-y-0.5">
+          <Eyebrow>📸 a little photo booth</Eyebrow>
+          <p className="mt-3 font-display text-lg font-medium text-ink">
+            A little place to make a little memory.
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">Step inside →</p>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
+          >
+            📸
+          </span>
+        </PaperCard>
+      </Link>
+
       {/* Secondary entries */}
       <div className="flex flex-wrap gap-3">
         <Link

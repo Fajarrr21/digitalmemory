@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,16 @@ export function FlameView({
             DAY {celebration.day}
           </p>
           <p className="mt-2 font-hand text-xl text-accent-ink">{celebration.line}</p>
-          <div className="mt-4 flex justify-center">
+          <p className="mt-3 text-sm text-ink-soft">
+            A little milestone deserves a little memory.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={`/photobooth?frame=day-${celebration.day}`}
+              className="inline-flex h-11 items-center rounded-full bg-accent px-6 text-[15px] font-medium text-[#4a2b30] shadow-[var(--shadow-lift)] transition hover:brightness-[1.03]"
+            >
+              📸 Take a Photo
+            </Link>
             <ShareMilestoneButton
               milestone={celebration}
               youName={youName}
@@ -206,14 +216,23 @@ export function FlameView({
                     ) : null}
                   </div>
                   {achieved ? (
-                    <ShareMilestoneButton
-                      milestone={m}
-                      youName={youName}
-                      partnerName={partnerName}
-                      youAvatarUrl={youAvatarUrl}
-                      partnerAvatarUrl={partnerAvatarUrl}
-                      small
-                    />
+                    <div className="flex flex-none items-center gap-2">
+                      <Link
+                        href={`/photobooth?frame=day-${m.day}`}
+                        title="Take a photo with this milestone frame"
+                        className="inline-flex h-9 items-center rounded-full border border-rule px-3 text-sm text-ink-soft transition hover:border-accent-ink/40 hover:text-accent-ink"
+                      >
+                        📸
+                      </Link>
+                      <ShareMilestoneButton
+                        milestone={m}
+                        youName={youName}
+                        partnerName={partnerName}
+                        youAvatarUrl={youAvatarUrl}
+                        partnerAvatarUrl={partnerAvatarUrl}
+                        small
+                      />
+                    </div>
                   ) : null}
                 </li>
               );

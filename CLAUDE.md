@@ -231,6 +231,30 @@ migrations + setup.
   below are marked seen. **Avatar adjuster**: the profile photo opens an
   IG-style crop modal (pan by drag + zoom slider in a circular viewport,
   canvas-exported square) before upload.
+- **A Little Photo Booth (done, migration 0013 — ⚠ run it in the SQL editor
+  before using Both of Us).** `/photobooth` — "Two people. One little frame."
+  Entry card on Home (not in the nav). Two modes: **👤 Just Me** is fully
+  client-side (no DB) — pick Classic/4-shot + a frame, countdown 3-2-1 capture
+  (mirrored square, `camera.tsx`), strip composed on canvas; **♡ Both of Us**
+  creates a `photobooth_sessions` row whose id IS the invite link
+  (`/photobooth/session/{id}`, RLS `is_member` keeps outsiders away; signed-out
+  partner round-trips via `/sign-in?next=…`). Waiting → join → lobby ("You're
+  both here ♡", shared frame + shot-count, either member sets them) → each
+  shoots on their own camera (per-shot prompts, uploads to storage
+  `…/photobooth/{session}/`, rows in `photobooth_photos` — one row per
+  (member, shot) so simultaneous uploads can't clobber), partner photos stay
+  hidden until the shared reveal; sync is plain polling (2.5s, `getBoothState`),
+  no realtime infra. Unjoined sessions expire after 24h. Frames live in
+  `photobooth-config.ts` (Minimal/Cute/Romantic/Film Strip/Newspaper/Dreamy/
+  Silly + 🔥 DAY-N milestone frames derived from flame MILESTONES, auto-unlocked
+  by the best flame ever); one canvas renderer `compose-strip.ts` draws
+  1080×1920 story-sized PNGs (fixed palettes, per-frame deco + photo filter).
+  Result actions: ↓ Download · ♡ Save (find-or-create album "My Photobooth" /
+  "Our Photobooth" via `ensureBoothAlbum` + existing `addAlbumMedia` path) ·
+  ↗ Share (navigator.share → IG Story / WA Status, download fallback). Flame
+  ties in: milestone celebration + achieved milestones on `/flame` link to
+  `/photobooth?frame=day-N` ("A little milestone deserves a little memory").
+  No WhatsApp anywhere in the booth — invites are shared by hand.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
