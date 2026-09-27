@@ -264,11 +264,21 @@ migrations + setup.
   📸 Kamera / 🖼️ Galeri toggle (`BoothSource` in `booth-stage.tsx`); in gallery
   mode no camera is requested at all — the empty window becomes a "＋ pilih
   foto" target and a hidden `<input type="file" accept="image/*" multiple>`
-  fills it. One picked photo goes through the same Keep/Retake review; picking
-  several fills the remaining own windows top→bottom. Picked files are decoded
-  with `createImageBitmap(…, {imageOrientation:"from-image"})` (EXIF-safe) and
-  centre-cropped to the slot aspect at `CAPTURE_MAX`, un-mirrored, so both
-  sources feed the same composer. Entry has a third card 🖼️ **From My Gallery**
+  fills it. Picked files are decoded with `createImageBitmap(…,
+  {imageOrientation:"from-image"})` (EXIF-safe) and kept as a ≤2000px "working"
+  image, un-mirrored, so both sources feed the same composer.
+  **IG-story-style adjuster**: a picked photo lands in its window as a live
+  pan/zoom — drag to move, two-finger pinch, mouse wheel (native non-passive
+  listener; React's `onWheel` is passive) or a zoom slider, all rendered inside
+  the real frame so it's WYSIWYG. Zoom is clamped to [1, 4] where 1 exactly
+  covers the window, and the offset is clamped so a window can never show a
+  gap. The maths is pure + unit-tested in `lib/booth-adjust.ts` (+ `.test.ts`);
+  the component only turns pointer events into calls on it and works in the
+  window's own export-pixel space (`slotOut`), bridged to screen px by one
+  ResizeObserver on the stage. Keep bakes exactly what's shown. Picking several
+  photos at once fills the remaining own windows cover-fitted; the stage holds
+  each original (per frame) so tapping a window re-opens its adjuster with the
+  last pan/zoom restored. Entry has a third card 🖼️ **From My Gallery**
   (= solo booth with `initialSource="upload"`); the duo shooting stage gets the
   toggle too, and a camera error now offers "🖼️ Pakai galeri". No WhatsApp
   anywhere in the booth — invites are shared by hand. Frame tooling lives in the session scratchpad (detect-slots.mjs /
