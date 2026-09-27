@@ -260,8 +260,18 @@ migrations + setup.
   "My Photobooth"/"Our Photobooth" via `ensureBoothAlbum` + `addAlbumMedia`) ·
   ↗ Share (navigator.share → IG Story / WA Status, download fallback). Flame
   milestone celebration links to `/photobooth` ("A little milestone deserves a
-  little memory"). No WhatsApp anywhere in the booth — invites are shared by
-  hand. Frame tooling lives in the session scratchpad (detect-slots.mjs /
+  little memory"). **Photo source: camera OR gallery.** The stage has a
+  📸 Kamera / 🖼️ Galeri toggle (`BoothSource` in `booth-stage.tsx`); in gallery
+  mode no camera is requested at all — the empty window becomes a "＋ pilih
+  foto" target and a hidden `<input type="file" accept="image/*" multiple>`
+  fills it. One picked photo goes through the same Keep/Retake review; picking
+  several fills the remaining own windows top→bottom. Picked files are decoded
+  with `createImageBitmap(…, {imageOrientation:"from-image"})` (EXIF-safe) and
+  centre-cropped to the slot aspect at `CAPTURE_MAX`, un-mirrored, so both
+  sources feed the same composer. Entry has a third card 🖼️ **From My Gallery**
+  (= solo booth with `initialSource="upload"`); the duo shooting stage gets the
+  toggle too, and a camera error now offers "🖼️ Pakai galeri". No WhatsApp
+  anywhere in the booth — invites are shared by hand. Frame tooling lives in the session scratchpad (detect-slots.mjs /
   build-frames.mjs) — regenerate configs from new template JPGs if more frames
   are ever added.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night

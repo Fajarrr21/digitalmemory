@@ -312,7 +312,7 @@ export function DuoBooth({
                   </>
                 )
               ) : (
-                <p className="text-xs text-ink-faint">Kotak 🤫 dan ♡ diisi {otherName} dari kameranya sendiri.</p>
+                <p className="text-xs text-ink-faint">Kotak 🤫 dan ♡ diisi {otherName} dari HP-nya sendiri.</p>
               )}
             </div>
           }

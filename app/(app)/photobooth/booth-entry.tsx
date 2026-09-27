@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
  * The booth doorway — "Who's in the frame?" comes FIRST; the frame is chosen
  * afterwards with the camera already live. Just Me runs right here; Both of Us
  * creates a session and moves to its own page (whose link is the invitation).
+ * From My Gallery is the same solo booth with no camera at all — the windows
+ * are filled with photos that already exist on the device.
  */
 export function BoothEntry({
   spaceId,
@@ -26,7 +28,7 @@ export function BoothEntry({
   initialFrameId: string | null;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"choose" | "solo">("choose");
+  const [mode, setMode] = useState<"choose" | "solo" | "gallery">("choose");
   const [creating, startCreate] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +44,14 @@ export function BoothEntry({
     });
   }
 
-  if (mode === "solo") {
+  if (mode === "solo" || mode === "gallery") {
     return (
       <SoloBooth
         spaceId={spaceId}
         userId={userId}
         dateISO={dateISO}
         initialFrameId={initialFrameId}
+        initialSource={mode === "gallery" ? "upload" : "camera"}
         onBack={() => setMode("choose")}
       />
     );
@@ -91,6 +94,20 @@ export function BoothEntry({
               {creating
                 ? "Menyiapkan boothnya…"
                 : `One booth for two — invite ${partnerName ?? "your person"} with a link.`}
+            </p>
+          </PaperCard>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMode("gallery")}
+          className="group text-left sm:col-span-2"
+        >
+          <PaperCard className="h-full transition group-hover:-translate-y-0.5 group-hover:border-accent-ink/40">
+            <p className="text-3xl">🖼️</p>
+            <p className="mt-3 font-display text-xl font-medium text-ink">From My Gallery</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Tanpa kamera — pilih foto yang sudah ada di galeri, frame-nya tetap kepakai.
             </p>
           </PaperCard>
         </button>

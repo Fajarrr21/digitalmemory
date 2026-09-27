@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { BoothStage } from "./booth-stage";
+import { BoothStage, type BoothSource } from "./booth-stage";
 import { BoothResultActions } from "./booth-result";
 import { composeBoothImage } from "./compose-strip";
 import {
@@ -18,24 +18,30 @@ type Phase = "shoot" | "reveal" | "result";
 /**
  * 👤 Just Me — straight into the booth: the camera is live inside the chosen
  * frame, the carousel swaps frames on the fly, and every window is shot in
- * turn. Fully client-side; nothing touches the database until "♡ Save".
+ * turn. With `initialSource="upload"` the very same booth runs without the
+ * camera at all: the windows are filled with photos picked from the gallery /
+ * files (either way can be switched to at any time inside the stage).
+ * Fully client-side; nothing touches the database until "♡ Save".
  */
 export function SoloBooth({
   spaceId,
   userId,
   dateISO,
   initialFrameId,
+  initialSource = "camera",
   onBack,
 }: {
   spaceId: string;
   userId: string;
   dateISO: string;
   initialFrameId: string | null;
+  initialSource?: BoothSource;
   onBack: () => void;
 }) {
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<Phase>("shoot");
   const [templateId, setTemplateId] = useState(templateById(initialFrameId).id);
+  const [source, setSource] = useState<BoothSource>(initialSource);
   const [photos, setPhotos] = useState<Record<number, string>>({});
   const [retakeSlot, setRetakeSlot] = useState<number | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
@@ -141,7 +147,7 @@ export function SoloBooth({
     <div className="flex flex-col gap-4">
       <div className="text-center">
         <p className="font-mono text-xs tracking-wide text-ink-faint">
-          👤 JUST ME ·{" "}
+          {source === "upload" ? "🖼️ FROM MY GALLERY" : "👤 JUST ME"} ·{" "}
           {allFilled ? "semua foto sudah ada ✓" : `foto ${Math.min(Object.keys(photos).length + 1, total)} dari ${total}`}
         </p>
       </div>
@@ -153,28 +159,41 @@ export function SoloBooth({
         photos={photos}
         currentSlot={currentSlot}
         prompt={prompt}
+        initialSource={initialSource}
+        onSourceChange={(s) => {
+          setSource(s);
+          if (s === "upload") setPrompt(null); // pose prompts belong to the camera
+        }}
         onKeep={keepPhoto}
         onRetakeSlot={(i) => setRetakeSlot(i)}
         footer={
           <div className="flex flex-col items-center gap-2">
             {!allFilled ? (
-              <div className="flex items-center gap-3 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setPrompt(randomSoloPrompt())}
-                  className="text-accent-ink hover:underline"
-                >
-                  🎲 {prompt ? "Prompt lain" : "Kasih pose prompt"}
-                </button>
-                {prompt ? (
-                  <button type="button" onClick={() => setPrompt(null)} className="text-ink-faint hover:underline">
-                    Skip →
+              source === "camera" ? (
+                <div className="flex items-center gap-3 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => setPrompt(randomSoloPrompt())}
+                    className="text-accent-ink hover:underline"
+                  >
+                    🎲 {prompt ? "Prompt lain" : "Kasih pose prompt"}
                   </button>
-                ) : null}
-              </div>
+                  {prompt ? (
+                    <button type="button" onClick={() => setPrompt(null)} className="text-ink-faint hover:underline">
+                      Skip →
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-center text-sm text-ink-soft">
+                  Foto lama juga boleh — frame-nya tetap kepakai. ♡
+                </p>
+              )
             ) : (
               <>
-                <p className="text-sm text-ink-soft">Tap foto mana pun untuk mengulanginya. ♡</p>
+                <p className="text-sm text-ink-soft">
+                  Tap foto mana pun untuk {source === "upload" ? "menggantinya" : "mengulanginya"}. ♡
+                </p>
                 <Button type="button" onClick={finish} disabled={composing}>
                   {composing ? "Menyusun…" : "✨ Jadikan strip"}
                 </Button>
