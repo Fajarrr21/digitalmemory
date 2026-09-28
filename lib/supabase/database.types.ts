@@ -11,6 +11,7 @@ export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
 export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
 export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
+export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
 
 type Timestamps = {
@@ -462,6 +463,70 @@ export type Database = {
           q_grateful?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["night_reflections"]["Insert"]>;
+        Relationships: [];
+      };
+      tasks: {
+        Row: {
+          id: string;
+          space_id: string;
+          created_by: string;
+          /** null = "both of us". */
+          assigned_to: string | null;
+          title: string;
+          note: string | null;
+          emoji: string | null;
+          due_date: string;
+          due_time: string | null;
+          started_at: string | null;
+          repeat_kind: TaskRepeat;
+          notify_whatsapp: boolean;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          created_by: string;
+          assigned_to?: string | null;
+          title: string;
+          note?: string | null;
+          emoji?: string | null;
+          due_date: string;
+          due_time?: string | null;
+          started_at?: string | null;
+          repeat_kind?: TaskRepeat;
+          notify_whatsapp?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["tasks"]["Insert"]>;
+        Relationships: [];
+      };
+      task_completions: {
+        Row: { task_id: string; user_id: string; completed_at: string };
+        Insert: { task_id: string; user_id: string; completed_at?: string };
+        Update: Partial<Database["public"]["Tables"]["task_completions"]["Insert"]>;
+        Relationships: [];
+      };
+      task_reminders: {
+        Row: {
+          id: string;
+          task_id: string;
+          space_id: string;
+          remind_at: string;
+          offset_days: number | null;
+          remind_time: string;
+          sent_at: string | null;
+          dismissed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          space_id: string;
+          remind_at: string;
+          offset_days?: number | null;
+          remind_time?: string;
+          sent_at?: string | null;
+          dismissed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_reminders"]["Insert"]>;
         Relationships: [];
       };
       tags: {

@@ -284,6 +284,40 @@ migrations + setup.
   anywhere in the booth — invites are shared by hand. Frame tooling lives in the session scratchpad (detect-slots.mjs /
   build-frames.mjs) — regenerate configs from new template JPGs if more frames
   are ever added.
+- **Little Things To Do (done, migration 0015 — run it in the SQL editor).**
+  `/tasks` — "So you don't have to keep everything in your head." PR, deadlines,
+  errands, janji, hal kecil yang takut kelupaan. `tasks` (due_date + optional
+  due_time, `assigned_to` null = BOTH of us, `started_at` = ◐ in progress,
+  `repeat_kind`, `notify_whatsapp`), `task_completions` (one row per member —
+  a solo thing is done when its assignee ticks it, a shared one only when BOTH
+  do, so "Fajar ○ / Dia ✓" is readable), `task_reminders` (several per task:
+  on the day / 1–2 days / 1 week before / custom, each with its own time;
+  `remind_at` pinned to the owner's wall clock via `zonedDateTimeToUTC`). RLS:
+  both members read/add/edit/delete the list (either may write a task FOR the
+  other), but you can only ever tick your OWN box. Status is derived, never
+  stored — pure + unit-tested in `lib/tasks/logic.ts` (+ `.test.ts`): upcoming /
+  in-progress / completed / overdue, grouped TODAY · TOMORROW · THIS WEEK ·
+  LATER · COMPLETED with overdue kept at the top (nothing is ever auto-deleted).
+  **Quick Add** parses "PR matematika besok jam 8" offline — no AI — in
+  `lib/tasks/parse.ts` (+ `.test.ts`: besok/lusa/weekday names/tanggal 30
+  september/30-9/ISO, jam 8 vs jam 8 malam, filler stripping, emoji guess); it
+  only ever pre-fills the form, the user confirms. **Reminders**: in-app nudges
+  are derived from `remind_at` (showing one never consumes it) and surface in
+  the 🔔 **reminder center** `/notifications` (task nudges + sealed letters +
+  a waiting flame, with "oke ♡" to dismiss a nudge), badge in the app header.
+  WhatsApp is **opt-in per task** (`notify_whatsapp`) and deliberately gentle
+  (`lib/notify/task.ts` — "Sedikit pengingat dari space kita ♡", never a
+  🚨 deadline alarm); assigning a task to the partner also sends a heads-up.
+  There's no always-on worker, so `lib/tasks/dispatch.ts` runs from two places —
+  the authed layout via `after()` whenever either of you opens the app, and
+  `/api/cron/reminders` (guarded by `CRON_SECRET`, wired in `vercel.json` at
+  01:00 UTC daily; Hobby allows one run/day, raise to hourly on Pro). Each
+  reminder is **claimed** (`update … where sent_at is null` returning rows)
+  before sending, so it can never go out twice; `sent_at` means only "the
+  WhatsApp went out". Entry is the Home card (📝 Little Things → what's coming);
+  a day with little things shows 📝 on `/calendar` and opens `/tasks?date=…`.
+  Repeating things spawn the next occurrence when fully done, keeping history.
+  Integration test: `node --env-file=.env.local scripts/test-tasks.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

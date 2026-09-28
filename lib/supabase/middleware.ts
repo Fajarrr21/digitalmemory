@@ -3,8 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/lib/supabase/database.types";
 
-/** Public routes reachable without a session. */
-const PUBLIC_PREFIXES = ["/sign-in", "/auth", "/_next", "/favicon"];
+/**
+ * Public routes reachable without a session. `/api/cron` is not really public
+ * — it guards itself with CRON_SECRET — but it must never be bounced to the
+ * sign-in page, since the scheduler has no session to offer.
+ */
+const PUBLIC_PREFIXES = ["/sign-in", "/auth", "/api/cron", "/_next", "/favicon"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(p));

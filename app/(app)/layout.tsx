@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSpaceContext, getUser } from "@/lib/auth";
+import { after } from "next/server";
+import { getPartner, getSpaceContext, getUser } from "@/lib/auth";
 import { recordPresence } from "@/lib/flame";
+import { countWaiting } from "@/lib/notifications";
+import { dispatchDueRemindersQuietly } from "@/lib/tasks/dispatch";
 import { greeting } from "@/lib/greeting";
 import { localHour } from "@/lib/date";
 import { SideRail } from "@/components/nav/side-rail";
@@ -26,6 +29,14 @@ export default async function AppLayout({
   // Our Little Flame: opening the app *is* presence — no activity required.
   await recordPresence(ctx.spaceId, ctx.userId, ctx.profile.timezone);
 
+  // Little Things: this app has no always-on worker, so either of you opening
+  // it is also when due WhatsApp reminders go out. Deferred past the response
+  // so a slow gateway can never hold up a page.
+  after(dispatchDueRemindersQuietly);
+
+  const partner = await getPartner(ctx.spaceId, ctx.userId);
+  const waiting = await countWaiting(ctx.spaceId, ctx.userId, partner?.id ?? null);
+
   const name = ctx.profile.nickname ?? ctx.profile.display_name;
   const hello = greeting(localHour(ctx.profile.timezone), name);
 
@@ -39,6 +50,20 @@ export default async function AppLayout({
             {hello}
           </p>
           <div className="flex flex-none items-center gap-2">
+            <Link
+              href="/notifications"
+              aria-label={
+                waiting > 0 ? `${waiting} hal menunggu kamu` : "Tidak ada yang menunggu"
+              }
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-rule text-ink-soft transition hover:border-accent-ink/40 hover:text-accent-ink"
+            >
+              <span aria-hidden>🔔</span>
+              {waiting > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[10px] text-[#4a2b30]">
+                  {waiting > 9 ? "9+" : waiting}
+                </span>
+              ) : null}
+            </Link>
             <ThemeToggle />
             <Link
               href="/profile"

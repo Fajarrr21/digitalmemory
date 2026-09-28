@@ -10,6 +10,8 @@ import { daypart } from "@/lib/greeting";
 import { resolveDailyLetter } from "@/lib/letters";
 import { getDayActivities } from "@/lib/activities";
 import { getForYouMessages } from "@/lib/for-you";
+import { getTasks } from "@/lib/tasks/queries";
+import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { createClient } from "@/lib/supabase/server";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -36,6 +38,12 @@ export default async function HomePage() {
     getPartner(ctx.spaceId, ctx.userId),
   ]);
   const partnerAway = partner ? await getAwayStatus(ctx.spaceId, partner.id) : null;
+
+  // Little Things: what's still waiting on YOU (yours + the shared ones).
+  const memberIds = [ctx.userId, ...(partner ? [partner.id] : [])];
+  const coming = upcomingTasks(await getTasks(ctx.spaceId), memberIds, today).filter(
+    (t) => t.assignedTo === null || t.assignedTo === ctx.userId,
+  );
 
   // Our Little Flame: milestone popup data (photos + streak) for this visit.
   const flame = await getFlameData(
@@ -161,6 +169,48 @@ export default async function HomePage() {
           </PaperCard>
         </Link>
       </div>
+
+      {/* Little Things — so you don't have to keep everything in your head */}
+      <Link href={coming.length > 0 ? "/tasks" : "/tasks?new=1"} className="group block">
+        <PaperCard className="relative overflow-hidden transition group-hover:-translate-y-0.5">
+          <Eyebrow>📝 little things</Eyebrow>
+          {coming.length > 0 ? (
+            <>
+              <p className="mt-3 font-display text-lg font-medium text-ink">
+                {coming.length === 1
+                  ? "One thing coming up"
+                  : `${coming.length} things coming up`}
+              </p>
+              <ul className="mt-2 flex flex-col gap-1 text-sm text-ink-soft">
+                {coming.slice(0, 3).map((t) => (
+                  <li key={t.id} className="flex items-baseline gap-2">
+                    <span className="truncate">
+                      • {t.emoji ?? "📝"} {t.title}
+                    </span>
+                    <span className="flex-none font-mono text-[11px] text-ink-faint">
+                      {dueLabel(t.dueDate, today)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-sm text-accent-ink">See what&apos;s coming →</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 font-display text-lg font-medium text-ink">
+                Nothing waiting for you. ♡
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">Add something →</p>
+            </>
+          )}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
+          >
+            📝
+          </span>
+        </PaperCard>
+      </Link>
 
       {/* Meanwhile — a little something while we're doing our own things */}
       <Link href="/meanwhile" className="group block">

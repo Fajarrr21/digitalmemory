@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSpaceContext, getPartner } from "@/lib/auth";
 import { getMonthMarks } from "@/lib/timeline";
+import { getTaskMonthMarks } from "@/lib/tasks/queries";
 import { localDateISO } from "@/lib/date";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PersonToggle } from "@/components/person-toggle";
@@ -39,6 +40,12 @@ export default async function CalendarPage({
   const month = match ? Number(match[2]) : now.getMonth() + 1; // 1-indexed
 
   const marks = await getMonthMarks(targetId, year, month);
+  // Little Things live on the same calendar — a day can hold a memory AND a
+  // deadline. Tasks belong to the space, so they show in either person's view.
+  const taskMarks = await getTaskMonthMarks(ctx.spaceId, year, month, [
+    ctx.userId,
+    ...(partner ? [partner.id] : []),
+  ]);
 
   const daysInMonth = new Date(year, month, 0).getDate();
   // Monday-first offset for the 1st of the month.
@@ -101,7 +108,10 @@ export default async function CalendarPage({
           const dateISO = `${ymParam(year, month)}-${String(day).padStart(2, "0")}`;
           const mark = marks.get(dateISO);
           const isToday = dateISO === todayISO;
-          const hasContent = !!mark && (mark.activityCount > 0 || mark.score !== null || mark.hasLetter);
+          const taskMark = taskMarks.get(dateISO);
+          const hasDiary =
+            !!mark && (mark.activityCount > 0 || mark.score !== null || mark.hasLetter);
+          const hasContent = hasDiary || !!taskMark;
 
           const inner = (
             <div
@@ -127,17 +137,34 @@ export default async function CalendarPage({
                   </span>
                 ) : null}
                 {mark?.hasLetter ? <span className="text-[9px]" title="ada surat">♡</span> : null}
+                {taskMark ? (
+                  <span
+                    className="text-[9px]"
+                    title={`${taskMark.total} hal kecil${taskMark.open === 0 ? " — semuanya selesai" : ""}`}
+                  >
+                    {taskMark.open > 0 ? "📝" : "✓"}
+                  </span>
+                ) : null}
               </div>
             </div>
           );
 
-          return hasContent ? (
-            <Link key={dateISO} href={`/diary/${dateISO}${daySuffix}`}>
-              {inner}
-            </Link>
-          ) : (
-            <div key={dateISO}>{inner}</div>
-          );
+          if (hasDiary) {
+            return (
+              <Link key={dateISO} href={`/diary/${dateISO}${daySuffix}`}>
+                {inner}
+              </Link>
+            );
+          }
+          // A day with only little things on it opens the list, filtered.
+          if (taskMark) {
+            return (
+              <Link key={dateISO} href={`/tasks?date=${dateISO}`}>
+                {inner}
+              </Link>
+            );
+          }
+          return <div key={dateISO}>{inner}</div>;
         })}
       </div>
 
@@ -147,6 +174,7 @@ export default async function CalendarPage({
         </span>
         <span className="flex items-center gap-1.5">●n momen</span>
         <span className="flex items-center gap-1.5">♡ surat</span>
+        <span className="flex items-center gap-1.5">📝 hal kecil</span>
       </div>
     </div>
   );
