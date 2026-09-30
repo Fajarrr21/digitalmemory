@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { whenYouTubeApiReady, type YTPlayer } from "@/lib/youtube";
 import { soundtrackConfig, type SoundtrackSong } from "./soundtrack-config";
 
 const cfg = soundtrackConfig;
@@ -46,56 +47,6 @@ function coverFor(song: SoundtrackSong): string | null {
   if (song.cover) return song.cover;
   if (song.youtubeId) return `https://i.ytimg.com/vi/${song.youtubeId}/hqdefault.jpg`;
   return null;
-}
-
-/* ---------- Tipe minimal untuk YouTube IFrame API ---------- */
-
-type YTPlayer = {
-  loadVideoById: (o: { videoId: string; startSeconds?: number }) => void;
-  playVideo: () => void;
-  pauseVideo: () => void;
-  stopVideo: () => void;
-  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
-  getCurrentTime: () => number;
-  getDuration: () => number;
-  destroy: () => void;
-};
-type YTPlayerOptions = {
-  videoId?: string;
-  playerVars?: Record<string, string | number>;
-  events?: {
-    onReady?: () => void;
-    onStateChange?: (e: { data: number }) => void;
-  };
-};
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (el: HTMLElement, opts: YTPlayerOptions) => YTPlayer;
-      PlayerState: { PLAYING: number; PAUSED: number; ENDED: number };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-// Pastikan script API-nya kebuka sekali saja, lalu panggil cb saat siap.
-function whenYouTubeApiReady(cb: () => void) {
-  if (typeof window === "undefined") return;
-  if (window.YT && window.YT.Player) {
-    cb();
-    return;
-  }
-  const prev = window.onYouTubeIframeAPIReady;
-  window.onYouTubeIframeAPIReady = () => {
-    prev?.();
-    cb();
-  };
-  if (!document.getElementById("st-yt-api")) {
-    const s = document.createElement("script");
-    s.id = "st-yt-api";
-    s.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(s);
-  }
 }
 
 type Phase = "opening" | "playing" | "ending";

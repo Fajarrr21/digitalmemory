@@ -318,6 +318,76 @@ migrations + setup.
   a day with little things shows 📝 on `/calendar` and opens `/tasks?date=…`.
   Repeating things spawn the next occurrence when fully done, keeping history.
   Integration test: `node --env-file=.env.local scripts/test-tasks.mjs`.
+- **Watch Together (done, migration 0016 — run it in the SQL editor).**
+  `/watch` — "Bring something to watch. We'll watch it together." One room, one
+  watching, two people, plus mic + chat. Home card adapts: no room → the
+  three-line invitation; a live room → "{partner} is waiting for you. ♡" /
+  "Kembali ke room". Not in the nav. Routes exactly as planned: `/watch` landing
+  · `/watch/create` · `/watch/join/[token]` · `/watch/room/[roomId]` ·
+  `/watch/history` · `/watch/[watchId]` (the last is a dynamic segment that
+  Next resolves *after* the static ones; it 404s on anything that isn't a uuid).
+  **Sources — YouTube is only one door** (`lib/watch/source.ts`, pure +
+  unit-tested): `youtube` (IFrame Player API → genuinely synced), `file` (a
+  direct video URL in `<video>` → genuinely synced), `embed` (someone else's
+  page in an iframe → NOT controllable, so the room counts you in and says so
+  instead of faking it). "Check video" (`checkWatchSource`) fetches the URL
+  server-side, reads `content-type`, then `X-Frame-Options` / CSP
+  `frame-ancestors` via `framingVerdict` and **takes no for an answer** — we
+  never strip or work around a site's protection; a refusal becomes "⚠️ Can't
+  play this video here". Titles/posters come from YouTube oEmbed or the page's
+  own `og:` tags (best-effort, capped at 64KB of HTML).
+  **The shared clock** is one claim on `watch_rooms` — `is_playing` +
+  `position_seconds` + `position_at` ("we were at 12:43 as of then") — so a
+  reload or a late join derives the present instead of waiting to be told.
+  Maths is pure + unit-tested in `lib/watch/sync.ts` (+ `.test.ts`):
+  `expectedPosition`, `shouldResync` (1.5s tolerance — below that a seek is
+  more jarring than the drift), `claimAt`, `minutesTogether`. Transport is
+  **Supabase Realtime** (the first use of it in this app — everything else
+  polls): broadcast for play/pause/seek/chat/reactions/countdown + the WebRTC
+  handshake, presence for watching / stepped away / on mic / speaking. The row
+  is the durable truth and a 6s poll is the safety net; the host re-states its
+  position every 5s (DB write only every 20s). Programmatic follows are guarded
+  by a `suppressUntil` window so following a pause can't echo back as a new one.
+  Room status only ever moves forward (`STATUS_RANK`), so a slow poll can't drag
+  the room back to the lobby.
+  **Voice** (`use-voice.ts`) is plain one-to-one WebRTC signalled over the same
+  channel; the host always makes the offer. Public STUN only, no TURN — a
+  hostile NAT can defeat it and the room says so rather than leaving a dead mic
+  lit. Mic is OFF on arrival, never recorded, never stored. The speaking ring
+  comes from a local RMS meter (rises instantly, falls slowly).
+  **Lobby ready-ticks are load-bearing**, not decoration: each person's tap is
+  the user gesture browsers require before audio may autoplay, so "Start
+  watching" can actually start on both sides. Then 3 → 2 → 1 → PLAY, and the
+  host publishes the play claim when it lands (`startWatching` deliberately
+  leaves the row paused at 0, so a reload mid-countdown doesn't land 3s in).
+  Other touches: 🎧 Quiet Watch (mic off, chat hidden, reactions kept),
+  🍿 Snack break after a 45s pause, auto-pause when the partner steps away
+  ("nobody gets left behind"), 💬 Little Chat persisted in `watch_messages`
+  (optimistic send, reply, video timestamp) — a panel on desktop, a drawer on
+  a phone. **Nothing here notifies** — no WhatsApp anywhere in Watch Together;
+  invites are shared by hand, exactly like the photobooth.
+  **Privacy:** no public rooms; the room id *is* the invite token; RLS is
+  `is_member(space_id)` on all four tables, and you may only ever write chat or
+  reactions AS yourself. The Realtime channel `watch:{roomId}` is opened as a
+  **private** channel, gated by the `watch_rooms_realtime` policy on
+  `realtime.messages` in 0016 (join `watch:<id>` only if you're a member of
+  that room's space). That policy is a plain statement, NOT wrapped in an
+  exception handler — an early version guarded it, which swallowed a real
+  failure and reported success while the privacy boundary was off; it must fail
+  loudly instead. At runtime the client still falls back once to a public
+  channel on the same unguessable topic rather than breaking a room, logging a
+  warning that names the migration. Unjoined rooms expire after 24h (checked in
+  the actions, no cron). **Saving is optional**: "That's a wrap" offers a note,
+  and `watch_memories` (one per room, `uq_watch_memory_per_room`, so both
+  pressing Save edits one card) keeps title/minutes/💬/❤️ + the line. Counts are
+  re-read from the tables, never trusted from the screen that pressed the
+  button. A memory survives its room (`on delete set null`); it shows on
+  `/watch/[watchId]`, in `/watch/history` ("Things We Watched"), and as a
+  compact strip on `/us`.
+  Integration test: `node --env-file=.env.local scripts/test-watch.mjs`.
+  Note: `lib/youtube.ts` now owns the `window.YT` types + the one-time API
+  loader — `/soundtrack` was refactored to import from it so the global is
+  declared in exactly one place.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

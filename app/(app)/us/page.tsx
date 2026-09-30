@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { getSpaceContext } from "@/lib/auth";
 import { getOurMemories } from "@/lib/our-memories";
+import { getWatchMemories } from "@/lib/watch/queries";
 import { formatDateLabel } from "@/lib/date";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
@@ -10,7 +12,10 @@ export default async function UsPage() {
   const ctx = await getSpaceContext();
   if (!ctx) return null;
 
-  const memories = await getOurMemories(ctx.spaceId);
+  const [memories, watched] = await Promise.all([
+    getOurMemories(ctx.spaceId),
+    getWatchMemories(ctx.spaceId, 3),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -56,6 +61,37 @@ export default async function UsPage() {
           </li>
         </ol>
       )}
+
+      {/* 🍿 Nights we spent watching something together — kept over in
+          /watch/history, shown here because they belong to us too. */}
+      {watched.length > 0 ? (
+        <section className="flex flex-col gap-3 border-t border-rule-soft pt-6">
+          <div className="flex items-center justify-between">
+            <Eyebrow>🍿 things we watched</Eyebrow>
+            <Link href="/watch/history" className="text-xs text-accent-ink hover:underline">
+              semua →
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {watched.map((w) => (
+              <li key={w.id}>
+                <Link
+                  href={`/watch/${w.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-paper px-4 py-3 text-sm transition hover:border-accent-ink/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-ink">🎬 {w.title}</span>
+                    <span className="font-mono text-[11px] text-ink-faint">
+                      {formatDateLabel(w.watchedDate)} · {w.minutes} min
+                    </span>
+                  </span>
+                  <span className="flex-none text-ink-faint">♡</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="border-t border-rule-soft pt-6">
         <MemoryComposer spaceId={ctx.spaceId} ownerId={ctx.userId} />

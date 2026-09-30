@@ -12,6 +12,8 @@ import { getDayActivities } from "@/lib/activities";
 import { getForYouMessages } from "@/lib/for-you";
 import { getTasks } from "@/lib/tasks/queries";
 import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
+import { getLiveRoom } from "@/lib/watch/queries";
+import { WATCH_INVITATION } from "./watch/watch-config";
 import { createClient } from "@/lib/supabase/server";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -74,6 +76,11 @@ export default async function HomePage() {
     meanwhileTitle = "Did you have your little moment?";
     meanwhileSub = "There's still something waiting, if not.";
   }
+
+  // Watch Together: if something is already on, the card becomes a way in.
+  const liveRoom = await getLiveRoom(ctx.spaceId);
+  const inRoom = !!liveRoom && (liveRoom.hostId === ctx.userId || liveRoom.guestId === ctx.userId);
+  const roomWaitsForMe = !!liveRoom && liveRoom.hostId !== ctx.userId && !liveRoom.guestId;
 
   const isEvening = ["evening", "night"].includes(daypart(localHour(ctx.profile.timezone)));
   const unopenedForYou =
@@ -240,6 +247,62 @@ export default async function HomePage() {
             className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
           >
             📸
+          </span>
+        </PaperCard>
+      </Link>
+
+      {/* 🍿 Watch Together — one room, one watching, two people */}
+      <Link
+        href={
+          liveRoom
+            ? inRoom
+              ? `/watch/room/${liveRoom.id}`
+              : `/watch/join/${liveRoom.id}`
+            : "/watch"
+        }
+        className="group block"
+      >
+        <PaperCard
+          className={
+            liveRoom
+              ? "relative overflow-hidden bg-gradient-to-br from-blush/40 to-paper transition group-hover:-translate-y-0.5"
+              : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+          }
+        >
+          {liveRoom ? (
+            <>
+              <Eyebrow>
+                {roomWaitsForMe
+                  ? `🍿 ${partner?.name ?? "Dia"} is waiting for you. ♡`
+                  : "🍿 room kalian masih terbuka"}
+              </Eyebrow>
+              <p className="mt-3 font-display text-lg font-medium text-ink text-balance">
+                🎬 {liveRoom.title}
+              </p>
+              {liveRoom.subtitle ? (
+                <p className="mt-1 text-sm text-ink-soft">{liveRoom.subtitle}</p>
+              ) : null}
+              <p className="mt-3 text-sm text-accent-ink">
+                {inRoom ? "Kembali ke room →" : "Join room →"}
+              </p>
+            </>
+          ) : (
+            <>
+              <Eyebrow>🍿 watch together</Eyebrow>
+              <p className="mt-3 font-display text-lg font-medium text-ink">
+                {WATCH_INVITATION[0]}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {WATCH_INVITATION.slice(1).join(" ")}
+              </p>
+              <p className="mt-3 text-sm text-accent-ink">Start watching →</p>
+            </>
+          )}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
+          >
+            🍿
           </span>
         </PaperCard>
       </Link>

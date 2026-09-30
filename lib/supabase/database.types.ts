@@ -13,6 +13,9 @@ export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
 export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
+export type WatchStatus = "waiting" | "ready" | "watching" | "ended";
+/** How the thing plays inside a Watch Room. Only youtube/file are controllable. */
+export type WatchSourceKind = "youtube" | "file" | "embed";
 
 type Timestamps = {
   created_at: string;
@@ -527,6 +530,132 @@ export type Database = {
           dismissed_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["task_reminders"]["Insert"]>;
+        Relationships: [];
+      };
+      watch_rooms: {
+        Row: {
+          id: string;
+          space_id: string;
+          host_id: string;
+          guest_id: string | null;
+          status: WatchStatus;
+          source_kind: WatchSourceKind;
+          source_url: string;
+          video_id: string | null;
+          title: string;
+          subtitle: string | null;
+          poster_url: string | null;
+          is_playing: boolean;
+          position_seconds: number;
+          position_at: string;
+          duration_seconds: number | null;
+          updated_by: string | null;
+          started_at: string | null;
+          ended_at: string | null;
+          expires_at: string;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          host_id: string;
+          guest_id?: string | null;
+          status?: WatchStatus;
+          source_kind: WatchSourceKind;
+          source_url: string;
+          video_id?: string | null;
+          title: string;
+          subtitle?: string | null;
+          poster_url?: string | null;
+          is_playing?: boolean;
+          position_seconds?: number;
+          position_at?: string;
+          duration_seconds?: number | null;
+          updated_by?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          expires_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["watch_rooms"]["Insert"]>;
+        Relationships: [];
+      };
+      watch_messages: {
+        Row: {
+          id: string;
+          room_id: string;
+          space_id: string;
+          user_id: string;
+          body: string;
+          reply_to: string | null;
+          at_seconds: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          space_id: string;
+          user_id: string;
+          body: string;
+          reply_to?: string | null;
+          at_seconds?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["watch_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      watch_reactions: {
+        Row: {
+          id: string;
+          room_id: string;
+          space_id: string;
+          user_id: string;
+          emoji: string;
+          at_seconds: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          space_id: string;
+          user_id: string;
+          emoji: string;
+          at_seconds?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["watch_reactions"]["Insert"]>;
+        Relationships: [];
+      };
+      watch_memories: {
+        Row: {
+          id: string;
+          space_id: string;
+          room_id: string | null;
+          created_by: string;
+          title: string;
+          subtitle: string | null;
+          source_kind: WatchSourceKind;
+          source_url: string | null;
+          poster_url: string | null;
+          watched_date: string;
+          minutes: number;
+          message_count: number;
+          reaction_count: number;
+          note: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          room_id?: string | null;
+          created_by: string;
+          title: string;
+          subtitle?: string | null;
+          source_kind: WatchSourceKind;
+          source_url?: string | null;
+          poster_url?: string | null;
+          watched_date: string;
+          minutes?: number;
+          message_count?: number;
+          reaction_count?: number;
+          note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["watch_memories"]["Insert"]>;
         Relationships: [];
       };
       tags: {
