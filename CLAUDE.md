@@ -388,6 +388,41 @@ migrations + setup.
   Note: `lib/youtube.ts` now owns the `window.YT` types + the one-time API
   loader — `/soundtrack` was refactored to import from it so the global is
   declared in exactly one place.
+- **Sejauh Ini, Kita (done, migration 0017 — run it in the SQL editor).**
+  `/journey` — "A story of how two people became “us”." A full-screen cinematic
+  journey (like `/road`/`/someday`, explicit night palette, `motion`, full
+  reduced-motion support) with the song *Kita Lewati Berdua* (Overnight) as its
+  soul: one hidden YouTube IFrame API player that fades in on "Mulai
+  perjalanan", is NOT looped, pauses while a Spotify/voice preview plays, and
+  when it ends the last screen says "lagunya sudah selesai. jalannya belum."
+  Flow: opening (two dots, two worlds, meeting on one road) → 01 When We Found
+  Each Other (config `FIRSTS` + derived first day/first letter) → 02 Somewhere
+  Along The Way (first-of-each-kind stones) → 03 Little Things We Did (the whole
+  road, grouped by month, tap a stone → preview sheet with "Open →" into the
+  real feature) → 04 The Days That Were Not Easy (rain, grey sky, optional
+  hand-picked `HARD_DAYS` — never auto from chats) → 05 Even From Far Away
+  (split road + counts of the ways we stayed present) → 06 We Know Each Other A
+  Little Better Now (Things I Know About You) → "Wait. Look how far we've
+  come." (road zooms out, numbers count up — not achievements, zeros hidden)
+  → NOW ("This is us.") → the road ahead (empty dashed road, "let's keep
+  going. ♡"). **The road is never stored**: `lib/journey/queries.ts` derives
+  every footprint on read from the tables that own it (direct letters — a
+  sequence = one stone, sealed ones keep their secret; first opened daily
+  letter; our_memories; completed duo photobooth sessions; watch_memories;
+  albums; first voice note / rating / coloring; SHARED meanwhile moments + songs;
+  flame milestones re-derived from presence + bridges; first presence day = 🌱),
+  so it grows by itself. Pure + unit-tested in `lib/journey/logic.ts`
+  (`buildRoad`, `FIRST_ONLY` kinds, `groupLetters`, `flameMilestoneDates`,
+  `daysTogether`, `journeyStats`). Only two things get tables (0017):
+  `journey_notes` — **Presence Notes** ("🌙 Fajar left something here") left at
+  a stop, found by the partner when they reach it; `journey_knowings` — written
+  BY you ABOUT your partner (RLS + check forbid writing about yourself or as
+  someone else). Neither ever notifies. Without 0017 the page still renders,
+  just with the composers hidden (`writable=false`). All copy, the song, the
+  `STARTED_ON` date and `FIRSTS` (✏️ fill them in — empty ones are hidden) live
+  in `app/(app)/journey/journey-config.ts`. Home card shows the tip of the road
+  + "N jejak · N hari · +N minggu ini". Not in the nav.
+  Integration test: `node --env-file=.env.local scripts/test-journey.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

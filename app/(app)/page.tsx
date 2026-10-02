@@ -14,6 +14,10 @@ import { getTasks } from "@/lib/tasks/queries";
 import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { getLiveRoom } from "@/lib/watch/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
+import { getJourneyGlance } from "@/lib/journey/queries";
+import { footprintsSince } from "@/lib/journey/logic";
+import { KIND_META, STARTED_ON } from "./journey/journey-config";
+import { addDaysISO } from "@/lib/date";
 import { createClient } from "@/lib/supabase/server";
 import { PaperCard } from "@/components/ui/paper-card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -81,6 +85,19 @@ export default async function HomePage() {
   const liveRoom = await getLiveRoom(ctx.spaceId);
   const inRoom = !!liveRoom && (liveRoom.hostId === ctx.userId || liveRoom.guestId === ctx.userId);
   const roomWaitsForMe = !!liveRoom && liveRoom.hostId !== ctx.userId && !liveRoom.guestId;
+
+  // Sejauh Ini, Kita: the road gets longer by itself — a glance at its tip.
+  const journey = await getJourneyGlance(
+    {
+      spaceId: ctx.spaceId,
+      userId: ctx.userId,
+      partnerId: partner?.id ?? null,
+      timezone: ctx.profile.timezone,
+    },
+    STARTED_ON,
+  );
+  const journeyTip = journey.road.slice(-7).map((f) => KIND_META[f.kind].emoji);
+  const newThisWeek = footprintsSince(journey.road, addDaysISO(today, -6)).length;
 
   const isEvening = ["evening", "night"].includes(daypart(localHour(ctx.profile.timezone)));
   const unopenedForYou =
@@ -304,6 +321,40 @@ export default async function HomePage() {
           >
             🍿
           </span>
+        </PaperCard>
+      </Link>
+
+      {/* 🌙 Sejauh Ini, Kita — the road we've walked, growing by itself */}
+      <Link href="/journey" className="group block">
+        <PaperCard className="relative overflow-hidden bg-gradient-to-br from-[#2a2238]/10 to-paper transition group-hover:-translate-y-0.5">
+          <Eyebrow>🌙 sejauh ini, kita</Eyebrow>
+          <p className="mt-3 font-display text-lg font-medium text-ink">
+            Look how far we&apos;ve come.
+          </p>
+          <div aria-hidden className="mt-3 flex items-center overflow-hidden text-sm">
+            {journey.road.length > journeyTip.length ? (
+              <span className="mr-1 font-mono text-[10px] text-ink-faint">···</span>
+            ) : null}
+            {journeyTip.map((e, i) => (
+              <span key={i} className="flex items-center">
+                <span className="h-px w-3 bg-rule" />
+                <span>{e}</span>
+              </span>
+            ))}
+            <span className="h-px w-3 bg-rule" />
+            <span className="flex items-center gap-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#f2c98a]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            </span>
+            <span className="h-px w-10 bg-gradient-to-r from-rule to-transparent" />
+          </div>
+          <p className="mt-3 text-sm text-ink-soft">
+            {journey.road.length === 0
+              ? "Jalannya baru dimulai. ♡"
+              : `${journey.road.length} jejak${journey.days > 0 ? ` · ${journey.days} hari` : ""}${
+                  newThisWeek > 0 ? ` · +${newThisWeek} minggu ini` : ""
+                }`}
+          </p>
         </PaperCard>
       </Link>
 

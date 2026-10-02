@@ -16,6 +16,16 @@ export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creati
 export type WatchStatus = "waiting" | "ready" | "watching" | "ended";
 /** How the thing plays inside a Watch Room. Only youtube/file are controllable. */
 export type WatchSourceKind = "youtube" | "file" | "embed";
+/** A stop on "Sejauh Ini, Kita" where a Presence Note can be left. */
+export type JourneyStop =
+  | "beginning"
+  | "along"
+  | "little"
+  | "hard"
+  | "far"
+  | "learned"
+  | "now"
+  | "ahead";
 
 type Timestamps = {
   created_at: string;
@@ -656,6 +666,47 @@ export type Database = {
           note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["watch_memories"]["Insert"]>;
+        Relationships: [];
+      };
+      journey_notes: {
+        Row: {
+          id: string;
+          space_id: string;
+          author_id: string;
+          stop: JourneyStop;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          author_id: string;
+          stop: JourneyStop;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["journey_notes"]["Insert"]>;
+        Relationships: [];
+      };
+      journey_knowings: {
+        Row: {
+          id: string;
+          space_id: string;
+          author_id: string;
+          about_id: string;
+          emoji: string;
+          label: string;
+          body: string;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          author_id: string;
+          about_id: string;
+          emoji: string;
+          label: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["journey_knowings"]["Insert"]>;
         Relationships: [];
       };
       tags: {
