@@ -423,6 +423,20 @@ migrations + setup.
   in `app/(app)/journey/journey-config.ts`. Home card shows the tip of the road
   + "N jejak · N hari · +N minggu ini". Not in the nav.
   Integration test: `node --env-file=.env.local scripts/test-journey.mjs`.
+  **Cerita awal kita (no DB).** Right after chapter 01 the journey rewinds
+  through the real early chats: Bagian I Instagram (@shegitta_) → Bagian II
+  the second account (@hierre.re) → Bagian III WhatsApp → First Call. All
+  content in `story-config.ts` (`STORY_ACTS`, `STORY_MOMENTS`: before-lines →
+  verbatim chat bubbles → after-lines; `{gap:true}` marks snippets whose order
+  isn't known; phone numbers banned by `story-config.test.ts`). Rendered by
+  `story.tsx` with primitives shared via `journey-ui.tsx`. `journey.tsx` now
+  builds a `SCENES` list (not index constants); "Look how far we've come" gains
+  a story recap step, and a new **reel** scene (lines → video → "And this isn't
+  the end… let's keep walking ♡") sits before NOW; the song pauses while the
+  video plays. Photos/video live in PRIVATE Storage at
+  `{space_id}/journey-story/` (signed in `page.tsx`), uploaded with
+  `node --env-file=.env.local scripts/upload-journey-story.mjs <folder>`;
+  missing media degrades gracefully (photo placeholder, video skipped).
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

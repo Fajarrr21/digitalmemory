@@ -33,25 +33,67 @@ import {
   ZoomOutRoad,
 } from "./journey-art";
 import { addKnowing, leavePresenceNote, removeKnowing, removePresenceNote } from "./actions";
+import {
+  ACCENT,
+  BTN,
+  CARD,
+  FAINT,
+  INK,
+  NextButton,
+  Reveal,
+  SMALL_BTN,
+  SOFT,
+  TapHint,
+  WARM,
+  stopPropagation,
+} from "./journey-ui";
+import {
+  STORY_ACTS,
+  STORY_AFTER,
+  STORY_MOMENTS,
+  REEL,
+  type StoryAct,
+  type StoryMoment,
+} from "./story-config";
+import { ReelScene, StoryActScene, StoryMomentScene, StoryRecap, type StoryMedia } from "./story";
 
-// Layar: 0 = pembuka, 1..C = bab, lalu "how far", "now", "ahead".
-const C = CHAPTERS.length;
-const HOWFAR = C + 1;
-const NOWSCENE = C + 2;
-const AHEADSCENE = C + 3;
-const TOTAL = C + 4;
+// Layar: pembuka → bab-bab (cerita awal kita disisipkan setelah bab
+// `STORY_AFTER`) → "how far" → video → "now" → "ahead".
+type Scene =
+  | { t: "opening" }
+  | { t: "chapter"; ch: Chapter }
+  | { t: "act"; act: StoryAct; trail: string[] }
+  | { t: "moment"; m: StoryMoment; trail: string[] }
+  | { t: "howfar" }
+  | { t: "reel" }
+  | { t: "now" }
+  | { t: "ahead" };
 
-// Palet terang di atas langit malam sendiri — warna eksplisit, bukan token tema.
-const INK = "text-[#f4ead9]";
-const SOFT = "text-[#cdbfae]";
-const FAINT = "text-[#9a8b7c]";
-const ACCENT = "text-[#eda9b2]";
-const WARM = "text-[#f2c98a]";
-const BTN =
-  "rounded-full border border-[#f4ead9]/20 bg-[#f4ead9]/[0.06] px-6 py-2.5 font-display text-[#f4ead9] backdrop-blur transition hover:border-[#eda9b2]/50 hover:text-[#eda9b2]";
-const SMALL_BTN =
-  "rounded-full border border-[#f4ead9]/20 bg-[#f4ead9]/[0.06] px-4 py-2 text-sm text-[#cdbfae] backdrop-blur transition hover:border-[#eda9b2]/40 hover:text-[#f4ead9]";
-const CARD = "rounded-2xl border border-[#f4ead9]/10 bg-[#f4ead9]/[0.04] backdrop-blur-sm";
+function storyScenes(): Scene[] {
+  const out: Scene[] = [];
+  const trail: string[] = [];
+  for (const act of STORY_ACTS) {
+    out.push({ t: "act", act, trail: [...trail] });
+    for (const m of STORY_MOMENTS.filter((x) => x.act === act.id)) {
+      trail.push(m.emoji);
+      out.push({ t: "moment", m, trail: [...trail] });
+    }
+  }
+  return out;
+}
+
+const SCENES: Scene[] = [
+  { t: "opening" },
+  ...CHAPTERS.flatMap((ch): Scene[] => [
+    { t: "chapter", ch },
+    ...(ch.kind === STORY_AFTER ? storyScenes() : []),
+  ]),
+  { t: "howfar" },
+  { t: "reel" },
+  { t: "now" },
+  { t: "ahead" },
+];
+const TOTAL = SCENES.length;
 
 const STARS = [
   { left: "8%", top: "12%", size: 2, delay: 0 },
@@ -69,64 +111,6 @@ type Person = { id: string; name: string };
 
 /** Teks dari ISO timestamp → tanggal (deterministik di server & browser). */
 const dateOf = (iso: string) => formatDateLabel(iso.slice(0, 10));
-
-function stopPropagation(e: React.SyntheticEvent) {
-  e.stopPropagation();
-}
-
-// ── util kecil ─────────────────────────────────────────────────────────────────
-
-function TapHint({ label }: { label: string }) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.span
-      className={`mt-10 block font-mono text-[11px] tracking-[0.2em] ${FAINT}`}
-      animate={reduce ? undefined : { opacity: [0.35, 1, 0.35] }}
-      transition={{ duration: 2.4, repeat: Infinity }}
-    >
-      {label}
-    </motion.span>
-  );
-}
-
-function Reveal({
-  children,
-  delay = 0,
-  className = "",
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      className={className}
-      initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ delay: reduce ? 0 : delay, duration: 0.9, ease: "easeOut" }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function NextButton({ onNext, label = UI.next }: { onNext: () => void; label?: string }) {
-  return (
-    <Reveal delay={0.3} className="mt-12">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onNext();
-        }}
-        className={`text-[15px] ${BTN}`}
-      >
-        {label}
-      </button>
-    </Reveal>
-  );
-}
 
 function CountUp({ value, delay = 0 }: { value: number; delay?: number }) {
   const reduce = useReducedMotion();
@@ -778,14 +762,18 @@ function HowFarScene({
   stats: JourneyData["stats"];
   onNext: () => void;
 }) {
-  const [step, setStep] = useState(0); // 0 wait+zoom · 1 look · 2 numbers · 3 closing
+  // 0 wait+zoom · 1 look · (2 rekap cerita awal kita) · numbers · closing
+  const [step, setStep] = useState(0);
   const emojis = road.map((f) => KIND_META[f.kind].emoji);
+  const R = STORY_MOMENTS.length > 0 ? 1 : 0;
+  const NUMBERS = 2 + R;
+  const CLOSING = 3 + R;
 
   return (
     <div
-      onClick={() => step < 3 && setStep((s) => s + 1)}
+      onClick={() => step < CLOSING && setStep((s) => s + 1)}
       className={`flex min-h-[100dvh] w-full flex-col items-center justify-center px-6 pt-24 pb-24 text-center ${
-        step < 3 ? "cursor-pointer" : ""
+        step < CLOSING ? "cursor-pointer" : ""
       }`}
     >
       <Reveal>
@@ -802,7 +790,9 @@ function HowFarScene({
         </Reveal>
       ) : null}
 
-      {step >= 2 ? (
+      {R > 0 && step >= 2 ? <StoryRecap /> : null}
+
+      {step >= NUMBERS ? (
         <div className="mt-10 flex flex-col items-center gap-2">
           {stats.map((s, i) => (
             <Reveal key={s.key} delay={i * 0.45}>
@@ -820,7 +810,7 @@ function HowFarScene({
         </div>
       ) : null}
 
-      {step >= 3 ? (
+      {step >= CLOSING ? (
         <>
           <Reveal className="mt-10">
             <p className={`whitespace-pre-line font-hand text-3xl ${ACCENT}`}>{HOW_FAR.closing}</p>
@@ -1006,12 +996,30 @@ function OpeningScene({ onBegin }: { onBegin: () => void }) {
 
 // ── langit per layar ─────────────────────────────────────────────────────────
 type Sky = { night: number; dusk: number; storm: number; dawn: number };
-function skyFor(scene: number): Sky {
-  if (scene <= 0) return { night: 1, dusk: 0, storm: 0, dawn: 0 };
-  if (scene === HOWFAR) return { night: 0.7, dusk: 0.45, storm: 0, dawn: 0.1 };
-  if (scene === NOWSCENE) return { night: 0.2, dusk: 0.35, storm: 0, dawn: 0.7 };
-  if (scene === AHEADSCENE) return { night: 0, dusk: 0.1, storm: 0, dawn: 1 };
-  switch (CHAPTERS[scene - 1].kind) {
+function skyFor(s: Scene): Sky {
+  switch (s.t) {
+    case "opening":
+      return { night: 1, dusk: 0, storm: 0, dawn: 0 };
+    case "howfar":
+      return { night: 0.7, dusk: 0.45, storm: 0, dawn: 0.1 };
+    // Layar jadi lebih kosong sebelum videonya.
+    case "reel":
+      return { night: 1, dusk: 0.1, storm: 0, dawn: 0 };
+    case "now":
+      return { night: 0.2, dusk: 0.35, storm: 0, dawn: 0.7 };
+    case "ahead":
+      return { night: 0, dusk: 0.1, storm: 0, dawn: 1 };
+    // Cerita awal: dari malam pelan-pelan menghangat sampai first call.
+    case "act":
+    case "moment": {
+      const id = s.t === "act" ? s.act.id : s.m.act;
+      if (s.t === "moment" && s.m.photo && s.m.headline) return { night: 0.3, dusk: 0.7, storm: 0, dawn: 0.35 };
+      if (id === "ig1") return { night: 0.8, dusk: 0.55, storm: 0, dawn: 0 };
+      if (id === "ig2") return { night: 0.6, dusk: 0.85, storm: 0, dawn: 0 };
+      return { night: 0.45, dusk: 1, storm: 0, dawn: 0.12 };
+    }
+  }
+  switch (s.ch.kind) {
     case "hard":
       return { night: 0.2, dusk: 0, storm: 1, dawn: 0 };
     case "far":
@@ -1037,10 +1045,13 @@ export function Journey({
   data,
   me,
   partner,
+  storyMedia = {},
 }: {
   data: JourneyData;
   me: Person;
   partner: Person | null;
+  /** Signed URL foto/video cerita awal kita, per Storage key. */
+  storyMedia?: StoryMedia;
 }) {
   const reduce = useReducedMotion();
   const [scene, setScene] = useState(0);
@@ -1141,6 +1152,21 @@ export function Journey({
     }
   }
 
+  // 🎬 Video penutup punya suaranya sendiri → lagu perjalanan menepi dulu.
+  const pausedForReel = useRef(false);
+  function reelPlaying() {
+    if (player.current && !songEnded && !muted) {
+      player.current.pauseVideo();
+      pausedForReel.current = true;
+    }
+  }
+  function reelStopped() {
+    if (pausedForReel.current) {
+      pausedForReel.current = false;
+      player.current?.playVideo();
+    }
+  }
+
   const goNext = () => setScene((s) => Math.min(s + 1, TOTAL - 1));
   const goPrev = () => setScene((s) => Math.max(s - 1, 0));
   const begin = () => {
@@ -1193,13 +1219,17 @@ export function Journey({
     }
   }
 
-  const chapter = scene >= 1 && scene <= C ? CHAPTERS[scene - 1] : null;
+  const current = SCENES[scene];
+  const chapter = current.t === "chapter" ? current.ch : null;
   const stripShare = chapter ? STRIP_REVEAL[chapter.kind] : undefined;
+  // Di cerita awal, jalan kecilnya diisi penanda-penanda cerita itu sendiri.
   const stripEmojis =
-    stripShare !== undefined && emojis.length > 0
-      ? emojis.slice(0, Math.max(1, Math.ceil(emojis.length * stripShare)))
-      : [];
-  const sky = skyFor(scene);
+    current.t === "act" || current.t === "moment"
+      ? current.trail
+      : stripShare !== undefined && emojis.length > 0
+        ? emojis.slice(0, Math.max(1, Math.ceil(emojis.length * stripShare)))
+        : [];
+  const sky = skyFor(current);
 
   return (
     <div
@@ -1310,18 +1340,29 @@ export function Journey({
           exit={reduce ? { opacity: 0 } : { opacity: 0, filter: "blur(6px)" }}
           transition={{ duration: 0.8, ease: "easeInOut" }}
         >
-          {scene === 0 ? (
+          {current.t === "opening" ? (
             <OpeningScene onBegin={begin} />
-          ) : chapter ? (
+          ) : current.t === "chapter" ? (
             <ChapterScene
-              ch={chapter}
-              extra={extraFor(chapter)}
-              notes={notesAt(chapter.stop)}
+              ch={current.ch}
+              extra={extraFor(current.ch)}
+              notes={notesAt(current.ch.stop)}
               onNext={goNext}
             />
-          ) : scene === HOWFAR ? (
+          ) : current.t === "act" ? (
+            <StoryActScene act={current.act} onNext={goNext} />
+          ) : current.t === "moment" ? (
+            <StoryMomentScene m={current.m} media={storyMedia} onNext={goNext} />
+          ) : current.t === "howfar" ? (
             <HowFarScene road={road} stats={data.stats} onNext={goNext} />
-          ) : scene === NOWSCENE ? (
+          ) : current.t === "reel" ? (
+            <ReelScene
+              src={storyMedia[REEL.video.key]}
+              onVideoPlay={reelPlaying}
+              onVideoStop={reelStopped}
+              onNext={goNext}
+            />
+          ) : current.t === "now" ? (
             <NowScene emojis={emojis} notes={notesAt("now")} onNext={goNext} />
           ) : (
             <AheadScene
@@ -1342,12 +1383,12 @@ export function Journey({
       ) : null}
 
       {/* titik-titik progres */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-30 flex items-center justify-center gap-1.5">
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-30 flex items-center justify-center gap-1">
         {Array.from({ length: TOTAL }).map((_, i) => (
           <span
             key={i}
-            className={`h-1.5 rounded-full transition-all duration-500 ${
-              i === scene ? "w-5 bg-[#eda9b2]/80" : "w-1.5 bg-[#f4ead9]/25"
+            className={`h-1 rounded-full transition-all duration-500 ${
+              i === scene ? "w-4 bg-[#eda9b2]/80" : "w-1 bg-[#f4ead9]/25"
             }`}
           />
         ))}
