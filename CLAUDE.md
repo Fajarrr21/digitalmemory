@@ -437,6 +437,38 @@ migrations + setup.
   `{space_id}/journey-story/` (signed in `page.tsx`), uploaded with
   `node --env-file=.env.local scripts/upload-journey-story.mjs <folder>`;
   missing media degrades gracefully (photo placeholder, video skipped).
+- **If I Could Hold Your Feelings / "Hold" (done, migration 0018 — run it in
+  the SQL editor).** `/hold` — "Let me be here with you." Either member opens a
+  small space for the other: feeling (6 → 4 objects: cloud/star/heart/moon,
+  `lib/hold/logic.ts` `objectFor`) + intensity 1–4 + need (stay/loved/space/
+  vent) + optional context + timing → review → send (`/hold/new`, draft +
+  client_key in sessionStorage so retries are idempotent). The partner opens
+  `/hold/[id]` ("Let Me Hold It") and answers with ONE gesture per round (Stay
+  Beside Me / Give Me Warmth + wrap·glow·hand / I'm Listening / Gentle Space;
+  best-fit first via `orderedActions`, "listening" never offered — and DB-
+  refused — when they asked for space) + optional message (presets are only a
+  start). Sender then picks "what do you need now?": less_alone / quiet → closed,
+  longer → `continued`, next round, need may change, optional follow-up.
+  Statuses pending→opened→responded→continued→closed|expired (3 days unanswered,
+  derived on read by `effectiveStatus` + settled lazily by `hold_tidy`, no
+  cron, no countdown on screen). **Privacy by table, not column**: shared
+  context/intensity live on `hold_sessions`; anything kept private lives in
+  `hold_private` (RLS owner-only) so the partner physically can't select it.
+  **No insert/update RLS at all** — every write is a security-definer function
+  (`hold_create/open/respond/after/close/set_kept/tidy`) that row-locks, checks
+  sender vs recipient + state, and dedupes via `client_key` + unique (session,
+  round, kind). Retention: a session not kept is scrubbed of its words on close
+  (`hold_scrub`) and its shell deleted 7 days later; Past Holds (`/hold/past`)
+  shows only kept ones, compact (date/object/gesture/status); only the sender
+  may release or delete (gone for both). Visuals: `components/hold/
+  feeling-object.tsx` (SVG + motion, reduced-motion safe, own night palette).
+  Notifications are generic only ("Ada ruang kecil yang menunggumu di Hold."):
+  WhatsApp once per session and only for timing "soon", claimed via
+  `notified_at`; sender gets one "seseorang sudah hadir" per gesture except
+  Gentle Space; per-person off switch `profiles.notif_prefs.hold_whatsapp`.
+  🔔 center + badge list waiting holds without details. Home card + a link from
+  Comfort Room. Integration test: `node --env-file=.env.local
+  scripts/test-hold.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

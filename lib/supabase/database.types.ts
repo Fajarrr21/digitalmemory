@@ -27,6 +27,15 @@ export type JourneyStop =
   | "now"
   | "ahead";
 
+/** If I Could Hold Your Feelings — see migration 0018. */
+export type HoldFeeling = "overwhelmed" | "alone" | "tired" | "racing" | "miss_you" | "comfort";
+export type HoldNeed = "stay" | "loved" | "space" | "vent";
+export type HoldTiming = "whenever" | "soon";
+export type HoldStatus = "pending" | "opened" | "responded" | "continued" | "closed" | "expired";
+export type HoldAction = "stay" | "warmth" | "listening" | "space";
+export type HoldGesture = "wrap" | "glow" | "hand";
+export type HoldAfter = "less_alone" | "longer" | "quiet";
+
 type Timestamps = {
   created_at: string;
   updated_at: string;
@@ -709,6 +718,62 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["journey_knowings"]["Insert"]>;
         Relationships: [];
       };
+      hold_sessions: {
+        Row: {
+          id: string;
+          space_id: string;
+          sender_id: string;
+          recipient_id: string;
+          feeling: HoldFeeling;
+          need: HoldNeed;
+          timing: HoldTiming;
+          shared_intensity: number | null;
+          shared_context: string | null;
+          status: HoldStatus;
+          round: number;
+          after_choice: HoldAfter | null;
+          kept: boolean;
+          client_key: string;
+          notified_at: string | null;
+          opened_at: string | null;
+          responded_at: string | null;
+          closed_at: string | null;
+          expires_at: string;
+        } & Timestamps;
+        // Writes go through the hold_* functions only (no insert/update RLS).
+        Insert: never;
+        Update: { notified_at?: string | null };
+        Relationships: [];
+      };
+      hold_private: {
+        Row: {
+          session_id: string;
+          owner_id: string;
+          intensity: number | null;
+          context: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      hold_replies: {
+        Row: {
+          id: string;
+          session_id: string;
+          author_id: string;
+          round: number;
+          kind: "support" | "followup";
+          action: HoldAction | null;
+          gesture: HoldGesture | null;
+          message: string | null;
+          client_key: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       tags: {
         Row: { id: string; space_id: string; name: string; created_at: string };
         Insert: { id?: string; space_id: string; name: string };
@@ -723,7 +788,47 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      hold_create: {
+        Args: {
+          p_space: string;
+          p_feeling: HoldFeeling;
+          p_intensity: number | null;
+          p_share_intensity: boolean;
+          p_need: HoldNeed;
+          p_context: string | null;
+          p_share_context: boolean;
+          p_timing: HoldTiming;
+          p_client_key: string;
+        };
+        Returns: { id: string; created: boolean };
+      };
+      hold_open: { Args: { p_session: string }; Returns: undefined };
+      hold_respond: {
+        Args: {
+          p_session: string;
+          p_action: HoldAction;
+          p_gesture: HoldGesture | null;
+          p_message: string | null;
+          p_client_key: string;
+        };
+        Returns: { id: string; duplicate: boolean };
+      };
+      hold_after: {
+        Args: {
+          p_session: string;
+          p_choice: HoldAfter;
+          p_new_need: HoldNeed | null;
+          p_followup: string | null;
+          p_keep: boolean;
+          p_client_key: string;
+        };
+        Returns: undefined;
+      };
+      hold_close: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
+      hold_set_kept: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
+      hold_tidy: { Args: { p_space: string }; Returns: undefined };
+    };
     Enums: Record<string, never>;
   };
 };

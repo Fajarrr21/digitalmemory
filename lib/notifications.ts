@@ -4,6 +4,8 @@ import { getFlameData } from "@/lib/flame";
 import { getDueNudges } from "@/lib/tasks/queries";
 import { dueLabel } from "@/lib/tasks/logic";
 import { localDateISO } from "@/lib/date";
+import { effectiveStatus } from "@/lib/hold/logic";
+import { countHoldWaiting } from "@/lib/hold/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -12,7 +14,7 @@ import { localDateISO } from "@/lib/date";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold";
 
 export type Notice = {
   id: string;
@@ -45,7 +47,7 @@ export async function getNotifications(
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -61,6 +63,12 @@ export async function getNotifications(
       .eq("tasks.space_id", spaceId)
       .order("completed_at", { ascending: false })
       .limit(6),
+    // Hold: only THAT a little space is waiting — never what it's about.
+    supabase
+      .from("hold_sessions")
+      .select("id, status, expires_at, created_at, updated_at")
+      .eq("recipient_id", userId)
+      .in("status", ["pending", "opened", "continued"]),
   ]);
 
   const now: Notice[] = [];
@@ -95,6 +103,20 @@ export async function getNotifications(
       detail: "Belum dibuka.",
       href: "/letter",
       at: letter.created_at,
+    });
+  }
+
+  for (const hold of holds ?? []) {
+    if (effectiveStatus(hold) === "expired") continue;
+    now.push({
+      id: `hold-${hold.id}`,
+      kind: "hold",
+      emoji: "🫧",
+      label: "Hold",
+      title: "Ada ruang kecil yang menunggumu.",
+      detail: "Datang kalau kamu sempat. ♡",
+      href: `/hold/${hold.id}`,
+      at: hold.status === "continued" ? hold.updated_at : hold.created_at,
     });
   }
 
@@ -144,20 +166,21 @@ export async function countWaiting(
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }] = await Promise.all([
+    const [nudges, { count: sealed }, holds] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
         .select("id", { count: "exact", head: true })
         .eq("recipient_id", userId)
         .eq("status", "sealed"),
+      countHoldWaiting(userId),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0);
+    return mine.length + (sealed ?? 0) + holds;
   } catch {
     return 0;
   }

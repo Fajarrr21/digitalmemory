@@ -13,6 +13,7 @@ import { getForYouMessages } from "@/lib/for-you";
 import { getTasks } from "@/lib/tasks/queries";
 import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { getLiveRoom } from "@/lib/watch/queries";
+import { getHoldGlance } from "@/lib/hold/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
 import { getJourneyGlance } from "@/lib/journey/queries";
 import { footprintsSince } from "@/lib/journey/logic";
@@ -79,6 +80,27 @@ export default async function HomePage() {
     meanwhileEyebrow = `${partner.name} is back ♡`;
     meanwhileTitle = "Did you have your little moment?";
     meanwhileSub = "There's still something waiting, if not.";
+  }
+
+  // Hold: only THAT something is waiting — never what it's about.
+  const hold = await getHoldGlance(ctx.userId);
+  const them = partner?.name ?? "Dia";
+  let holdEyebrow = "🫧 if i could hold your feelings";
+  let holdTitle = "Kamu nggak harus baik-baik saja untuk tetap disayang.";
+  let holdSub = "Aku butuh ditemani →";
+  let holdHref = "/hold";
+  if (hold.waitingForMe > 0) {
+    holdEyebrow = `🫧 dari ${them}`;
+    holdTitle = "Ada ruang kecil yang menunggumu.";
+    holdSub = "Datang kalau kamu sempat. ♡";
+  } else if (hold.mine) {
+    holdEyebrow = "🫧 ruangmu";
+    holdTitle =
+      hold.mine.status === "responded"
+        ? `${them} sudah hadir di sini. ♡`
+        : "Ruangmu masih terbuka.";
+    holdSub = "Lihat →";
+    holdHref = `/hold/${hold.mine.id}`;
   }
 
   // Watch Together: if something is already on, the card becomes a way in.
@@ -250,6 +272,27 @@ export default async function HomePage() {
           </span>
         </PaperCard>
       </Link>
+
+      {/* 🫧 If I Could Hold Your Feelings */}
+      {hold.ready ? (
+        <Link href={holdHref} className="group block">
+          <PaperCard
+            className={
+              hold.waitingForMe > 0
+                ? "relative overflow-hidden bg-gradient-to-br from-[#3a2436]/15 via-blush/40 to-paper transition group-hover:-translate-y-0.5"
+                : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+            }
+          >
+            <Eyebrow>{holdEyebrow}</Eyebrow>
+            <p className="mt-3 font-display text-lg font-medium text-ink text-balance">{holdTitle}</p>
+            <p className="mt-1 text-sm text-ink-soft">{holdSub}</p>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-1 -bottom-2 h-16 w-16 rounded-full bg-[radial-gradient(circle,#fff3e4_0%,#f4c7cf_35%,transparent_70%)] opacity-60 transition group-hover:scale-105"
+            />
+          </PaperCard>
+        </Link>
+      ) : null}
 
       {/* A Little Photo Booth */}
       <Link href="/photobooth" className="group block">

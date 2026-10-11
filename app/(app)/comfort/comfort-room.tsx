@@ -60,6 +60,14 @@ export function ComfortRoom() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {/* Sometimes comforting yourself isn't enough — and that's okay. */}
+      <Link
+        href="/hold/new"
+        className="mt-2 inline-flex items-center gap-1 self-start text-sm text-ink-soft hover:text-accent-ink"
+      >
+        🫧 Kalau kamu ingin ditemani, bukan sendirian — Aku butuh ditemani →
+      </Link>
     </div>
   );
 }
