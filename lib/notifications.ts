@@ -6,6 +6,7 @@ import { dueLabel } from "@/lib/tasks/logic";
 import { localDateISO } from "@/lib/date";
 import { effectiveStatus } from "@/lib/hold/logic";
 import { countHoldWaiting } from "@/lib/hold/queries";
+import { countCareWaiting, getCareWaiting } from "@/lib/care/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -14,7 +15,7 @@ import { countHoldWaiting } from "@/lib/hold/queries";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "care";
 
 export type Notice = {
   id: string;
@@ -47,7 +48,7 @@ export async function getNotifications(
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, cares] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -69,6 +70,8 @@ export async function getNotifications(
       .select("id, status, expires_at, created_at, updated_at")
       .eq("recipient_id", userId)
       .in("status", ["pending", "opened", "continued"]),
+    // Little Care: only THAT someone needs a little care — never symptoms.
+    getCareWaiting(userId),
   ]);
 
   const now: Notice[] = [];
@@ -120,6 +123,19 @@ export async function getNotifications(
     });
   }
 
+  for (const care of cares) {
+    now.push({
+      id: `care-${care.id}`,
+      kind: "care",
+      emoji: "🤍",
+      label: "Little Care",
+      title: "Ada seseorang yang butuh sedikit perhatianmu.",
+      detail: "Lihat apa yang dia butuhkan. ♡",
+      href: `/care/${care.id}`,
+      at: care.after_at && care.after_choice === "longer" ? care.after_at : care.created_at,
+    });
+  }
+
   if (flame.state.status === "waiting") {
     now.push({
       id: "flame-waiting",
@@ -166,7 +182,7 @@ export async function countWaiting(
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }, holds] = await Promise.all([
+    const [nudges, { count: sealed }, holds, cares] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
@@ -174,13 +190,14 @@ export async function countWaiting(
         .eq("recipient_id", userId)
         .eq("status", "sealed"),
       countHoldWaiting(userId),
+      countCareWaiting(userId),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0) + holds;
+    return mine.length + (sealed ?? 0) + holds + cares;
   } catch {
     return 0;
   }

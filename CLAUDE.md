@@ -469,6 +469,36 @@ migrations + setup.
   🔔 center + badge list waiting holds without details. Home card + a link from
   Comfort Room. Integration test: `node --env-file=.env.local
   scripts/test-hold.mjs`.
+- **Little Care (done, migration 0019 — run it in the SQL editor).** `/care` —
+  "A little comfort, from someone who loves you." A warm room for when one of
+  you is physically unwell; two-way like Hold. **Comfort, never treatment**:
+  no diagnosis, no medicine/dosage, no AI. Flow: Home (virtual bedroom + Care
+  Orb, `components/care/care-room.tsx`) → `/care/new`: symptoms (multi) +
+  severity + optional note, each with a share toggle → **warning-signs step**
+  (severe/worsening pain, repeated vomiting, can't keep fluids, dehydration,
+  fainting, heavy bleeding, possibly pregnant + pain) → What Would Help (warm /
+  drink / stay / quiet / surprise) → review → send. `safetyLevel` (pure, tested
+  in `lib/care/logic.ts`): any warning sign or severe+nausea → urgent, severe →
+  check; then `SafetyCard` (`components/care/safety-card.tsx`, tel 119/112)
+  sits ABOVE every comforting thing, and the sender may consent to share just
+  the flag `needs_check` (DB ignores it without a reason). `/care/[id]`: the
+  carer gets 5 actions — gesture (hug/glow/star, each its own `GestureBloom`
+  animation), a ≤280-char message (presets), accompany offer (chat/call), "I'll
+  let you rest", real help offer (drink/medical/family/close); offers wait for
+  the sender's **Iya, mau / Nanti dulu** (`care_answer`). Sender: care feed,
+  **Rest without pressure** switch (resting: no WhatsApp, no call offers, carer
+  gets ONE note for later — DB-enforced), and "A little better?" (better →
+  closed, optionally kept · longer → stays open + carer is waiting again ·
+  rest → rest mode); a severe/flagged session reminds them that feeling better
+  ≠ safe. Data model mirrors Hold: `care_sessions` holds only what was shared,
+  `care_private` (owner-only RLS) the full truth, `care_actions`; NO insert/
+  update RLS — all writes via security-definer `care_*` functions with
+  client_key idempotency. Un-kept sessions are scrubbed on close and deleted 7
+  days later; untouched ones expire after 3 days (`care_tidy`, lazy). WhatsApp
+  (`lib/notify/care.ts`) is generic only: carer once per session on create,
+  sender once on the first care (never resting/quiet/"rest"); opt-out
+  `profiles.notif_prefs.care_whatsapp`. Home card + 🔔 center + Comfort Room
+  link. Integration test: `node --env-file=.env.local scripts/test-care.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

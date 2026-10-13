@@ -14,6 +14,7 @@ import { getTasks } from "@/lib/tasks/queries";
 import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { getLiveRoom } from "@/lib/watch/queries";
 import { getHoldGlance } from "@/lib/hold/queries";
+import { getCareGlance } from "@/lib/care/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
 import { getJourneyGlance } from "@/lib/journey/queries";
 import { footprintsSince } from "@/lib/journey/logic";
@@ -101,6 +102,29 @@ export default async function HomePage() {
         : "Ruangmu masih terbuka.";
     holdSub = "Lihat →";
     holdHref = `/hold/${hold.mine.id}`;
+  }
+
+  // Little Care: only THAT someone isn't feeling well — never what or how bad.
+  const care = await getCareGlance(ctx.userId);
+  let careEyebrow = "🤍 little care";
+  let careTitle = "Kalau badanmu lagi nggak enak, bilang ke aku ya.";
+  let careSub = "A little comfort, from someone who loves you →";
+  let careHref = "/care";
+  if (care.forMe) {
+    careEyebrow = `🤍 ${them}`;
+    careTitle = care.forMe.waiting ? `${them} sedang butuh sedikit perhatianmu.` : `Kamu sedang menemani ${them}.`;
+    careSub = "Lihat apa yang dia butuhkan →";
+    careHref = `/care/${care.forMe.id}`;
+  } else if (care.mine) {
+    careEyebrow = "🤍 little care-mu";
+    careTitle =
+      care.mine.status === "resting"
+        ? "Kamu sedang istirahat. Nggak ada yang perlu dibalas."
+        : care.mine.cared
+          ? `${them} sedang menemanimu. ♡`
+          : `Sudah terkirim. ${them} akan datang.`;
+    careSub = "Lihat →";
+    careHref = `/care/${care.mine.id}`;
   }
 
   // Watch Together: if something is already on, the card becomes a way in.
@@ -289,6 +313,27 @@ export default async function HomePage() {
             <span
               aria-hidden
               className="pointer-events-none absolute -right-1 -bottom-2 h-16 w-16 rounded-full bg-[radial-gradient(circle,#fff3e4_0%,#f4c7cf_35%,transparent_70%)] opacity-60 transition group-hover:scale-105"
+            />
+          </PaperCard>
+        </Link>
+      ) : null}
+
+      {/* 🤍 Little Care */}
+      {care.ready ? (
+        <Link href={careHref} className="group block">
+          <PaperCard
+            className={
+              care.forMe?.waiting
+                ? "relative overflow-hidden bg-gradient-to-br from-[#f6c98d]/30 via-blush/40 to-paper transition group-hover:-translate-y-0.5"
+                : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+            }
+          >
+            <Eyebrow>{careEyebrow}</Eyebrow>
+            <p className="mt-3 font-display text-lg font-medium text-ink text-balance">{careTitle}</p>
+            <p className="mt-1 text-sm text-ink-soft">{careSub}</p>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-1 -bottom-2 h-16 w-16 rounded-full bg-[radial-gradient(circle,#fff3e4_0%,#f6c98d_35%,transparent_70%)] opacity-60 transition group-hover:scale-105"
             />
           </PaperCard>
         </Link>

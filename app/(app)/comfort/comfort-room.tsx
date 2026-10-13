@@ -68,6 +68,12 @@ export function ComfortRoom() {
       >
         🫧 Kalau kamu ingin ditemani, bukan sendirian — Aku butuh ditemani →
       </Link>
+      <Link
+        href="/care"
+        className="inline-flex items-center gap-1 self-start text-sm text-ink-soft hover:text-accent-ink"
+      >
+        🤍 Kalau badanmu yang lagi nggak enak — Little Care →
+      </Link>
     </div>
   );
 }

@@ -36,6 +36,23 @@ export type HoldAction = "stay" | "warmth" | "listening" | "space";
 export type HoldGesture = "wrap" | "glow" | "hand";
 export type HoldAfter = "less_alone" | "longer" | "quiet";
 
+/** Little Care — see migration 0019. */
+export type CareSymptom = "stomach" | "nausea" | "cramps" | "dizzy" | "weak" | "other";
+export type CareSeverity = "mild" | "moderate" | "severe";
+export type CareRedFlag =
+  | "severe_pain"
+  | "repeated_vomiting"
+  | "no_fluids"
+  | "fainted"
+  | "heavy_bleeding"
+  | "pregnant_pain"
+  | "dehydrated";
+export type CareWant = "warm" | "drink" | "stay" | "quiet" | "surprise";
+export type CareStatus = "open" | "resting" | "closed" | "expired";
+export type CareAfter = "better" | "longer" | "rest";
+export type CareKind = "gesture" | "message" | "accompany" | "rest" | "help";
+export type CareAnswer = "yes" | "not_now";
+
 type Timestamps = {
   created_at: string;
   updated_at: string;
@@ -774,6 +791,66 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      care_sessions: {
+        Row: {
+          id: string;
+          space_id: string;
+          sender_id: string;
+          recipient_id: string;
+          wants: CareWant[];
+          shared_symptoms: CareSymptom[] | null;
+          shared_severity: CareSeverity | null;
+          shared_note: string | null;
+          needs_check: boolean;
+          status: CareStatus;
+          after_choice: CareAfter | null;
+          after_at: string | null;
+          rest_since: string | null;
+          kept: boolean;
+          client_key: string;
+          notified_at: string | null;
+          sender_notified_at: string | null;
+          opened_at: string | null;
+          last_care_at: string | null;
+          closed_at: string | null;
+          expires_at: string;
+        } & Timestamps;
+        // Writes go through the care_* functions only (no insert/update RLS).
+        Insert: never;
+        Update: { notified_at?: string | null; sender_notified_at?: string | null };
+        Relationships: [];
+      };
+      care_private: {
+        Row: {
+          session_id: string;
+          owner_id: string;
+          symptoms: CareSymptom[];
+          severity: CareSeverity | null;
+          note: string | null;
+          red_flags: CareRedFlag[];
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      care_actions: {
+        Row: {
+          id: string;
+          session_id: string;
+          author_id: string;
+          kind: CareKind;
+          variant: string | null;
+          message: string | null;
+          answer: CareAnswer | null;
+          answered_at: string | null;
+          client_key: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       tags: {
         Row: { id: string; space_id: string; name: string; created_at: string };
         Insert: { id?: string; space_id: string; name: string };
@@ -828,6 +905,41 @@ export type Database = {
       hold_close: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
       hold_set_kept: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
       hold_tidy: { Args: { p_space: string }; Returns: undefined };
+      care_create: {
+        Args: {
+          p_space: string;
+          p_symptoms: CareSymptom[];
+          p_severity: CareSeverity;
+          p_note: string | null;
+          p_share_details: boolean;
+          p_share_note: boolean;
+          p_red_flags: CareRedFlag[];
+          p_needs_check: boolean;
+          p_wants: CareWant[];
+          p_client_key: string;
+        };
+        Returns: { id: string; created: boolean };
+      };
+      care_open: { Args: { p_session: string }; Returns: undefined };
+      care_act: {
+        Args: {
+          p_session: string;
+          p_kind: CareKind;
+          p_variant: string | null;
+          p_message: string | null;
+          p_client_key: string;
+        };
+        Returns: { id: string; duplicate: boolean; first: boolean };
+      };
+      care_answer: { Args: { p_action: string; p_answer: CareAnswer }; Returns: undefined };
+      care_after: {
+        Args: { p_session: string; p_choice: CareAfter; p_keep: boolean };
+        Returns: undefined;
+      };
+      care_set_rest: { Args: { p_session: string; p_on: boolean }; Returns: undefined };
+      care_close: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
+      care_set_kept: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
+      care_tidy: { Args: { p_space: string }; Returns: undefined };
     };
     Enums: Record<string, never>;
   };
