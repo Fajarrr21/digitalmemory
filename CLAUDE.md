@@ -507,6 +507,40 @@ migrations + setup.
   `notified_at`), opt-out `notif_prefs.stay_whatsapp`. Home card + one 🔔
   notice + Comfort Room link. No ambient audio (no assets). Integration test:
   `node --env-file=.env.local scripts/test-stay.mjs`.
+- **her little moon. ♡ (done, migration 0021 — run it in the SQL editor).**
+  `/moon` — her private cycle space. Role-split: the **keeper** gets the
+  tracker (tabs Hari ini · Kalender · Check-in · Insight · Pengaturan); for the
+  **author** `/moon` is ONLY the partner view and sub-routes redirect. Cycle
+  maths is pure + tested (`lib/moon/cycle.ts`): averages from HER last ≤6
+  plausible cycles (15–90 days; others shown grey, excluded) — no 28-day
+  default, no prediction until 2 logged starts; confidence low/limited/varied/
+  steady widens the window; late = "N hari lewat dari perkiraan", never a
+  stacked guess; `periodProblem` validates future/order/length/overlap
+  (+ DB trigger `moon_overlap`, one ongoing via partial unique index); dates
+  are her profile timezone (`localDateISO`). Check-in (`checkin-form.tsx`):
+  all-optional chips (cramps 1–3, headache, nausea, vomiting, fatigue, mood,
+  energy, flow, private note), upsert per day, edit/delete; strong cramps /
+  vomiting → a proportional "consider medical help" note (never a cause);
+  repeated vomiting → firmer note on Hari ini. Insights (`lib/moon/insights.ts`)
+  only above thresholds (≥5 check-ins, ≥3 per comparison side), CSS bar lists.
+  **Privacy (the core):** `moon_periods` / `moon_checkins` / `moon_share` /
+  `moon_reminders` are OWNER-ONLY RLS — the partner gets 0 rows via the API.
+  He sees only (a) `moon_care_requests` she deliberately sends (6 needs, he
+  can ack "I'm on it ♡", she closes or withdraws) — responses reuse Direct
+  Letters (+ Spotify) and stay gifts, no new messaging; and (b)
+  `moon_partner_view()` (security definer) which reads `moon_share` LIVE:
+  share_phase → period dates (→ "sedang menstruasi"/"sekitar …"),
+  share_symptoms → today's symptom flags only (never note/mood/flow/energy),
+  partner_heads_up → an in-app nudge for him the day before/of the expected
+  start. Everything off → returns null and his side shows no hint at all
+  (his Home card only appears for an active request / heads-up). **Reminders**
+  (`lib/moon/reminders.ts`): her own, in-app in 🔔 from their time until "oke
+  ♡" (check-in kind clears when she checks in); optional WhatsApp with ONE
+  generic text (no period words — unit-tested), dispatched via the authed
+  layout `after()` + the daily cron (`lib/moon/dispatch.ts`, claimed per
+  local day via `sent_on`, skipped when >6h stale) — the UI says it's
+  "around" the time. Integration test (synthetic 2020 dates, restores her
+  real share settings): `node --env-file=.env.local scripts/test-moon.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

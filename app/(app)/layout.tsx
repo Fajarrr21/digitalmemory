@@ -5,6 +5,7 @@ import { getPartner, getSpaceContext, getUser } from "@/lib/auth";
 import { recordPresence } from "@/lib/flame";
 import { countWaiting } from "@/lib/notifications";
 import { dispatchDueRemindersQuietly } from "@/lib/tasks/dispatch";
+import { dispatchMoonRemindersQuietly } from "@/lib/moon/dispatch";
 import { greeting } from "@/lib/greeting";
 import { localHour } from "@/lib/date";
 import { SideRail } from "@/components/nav/side-rail";
@@ -33,9 +34,10 @@ export default async function AppLayout({
   // it is also when due WhatsApp reminders go out. Deferred past the response
   // so a slow gateway can never hold up a page.
   after(dispatchDueRemindersQuietly);
+  after(dispatchMoonRemindersQuietly);
 
   const partner = await getPartner(ctx.spaceId, ctx.userId);
-  const waiting = await countWaiting(ctx.spaceId, ctx.userId, partner?.id ?? null);
+  const waiting = await countWaiting(ctx.spaceId, ctx.userId, partner?.id ?? null, ctx.profile.timezone, ctx.role);
 
   const name = ctx.profile.nickname ?? ctx.profile.display_name;
   const hello = greeting(localHour(ctx.profile.timezone), name);

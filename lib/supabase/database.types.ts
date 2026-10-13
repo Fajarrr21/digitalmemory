@@ -42,6 +42,12 @@ export type StayObjectKind = "flower" | "heart" | "star" | "crane" | "moon";
 export type StayScene = "rain" | "night" | "morning";
 export type StayLamp = "warm" | "dim" | "window";
 
+/** her little moon. — see migration 0021. */
+export type MoonMood = "calm" | "happy" | "sensitive" | "sad" | "irritable" | "anxious";
+export type MoonFlow = "spotting" | "light" | "medium" | "heavy";
+export type MoonNeed = "extra_care" | "company" | "cheer" | "space" | "help" | "share";
+export type MoonReminderKind = "checkin" | "period" | "insights" | "custom";
+
 
 type Timestamps = {
   created_at: string;
@@ -837,6 +843,110 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["stay_rooms"]["Insert"]>;
         Relationships: [];
       };
+      moon_periods: {
+        Row: { id: string; user_id: string; space_id: string; start_date: string; end_date: string | null } & Timestamps;
+        Insert: { id?: string; user_id: string; space_id: string; start_date: string; end_date?: string | null };
+        Update: { start_date?: string; end_date?: string | null };
+        Relationships: [];
+      };
+      moon_checkins: {
+        Row: {
+          id: string;
+          user_id: string;
+          space_id: string;
+          day: string;
+          cramps: number | null;
+          headache: boolean;
+          nausea: boolean;
+          vomiting: boolean;
+          fatigue: boolean;
+          mood: MoonMood | null;
+          energy: number | null;
+          flow: MoonFlow | null;
+          note: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          user_id: string;
+          space_id: string;
+          day: string;
+          cramps?: number | null;
+          headache?: boolean;
+          nausea?: boolean;
+          vomiting?: boolean;
+          fatigue?: boolean;
+          mood?: MoonMood | null;
+          energy?: number | null;
+          flow?: MoonFlow | null;
+          note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["moon_checkins"]["Insert"]>;
+        Relationships: [];
+      };
+      moon_share: {
+        Row: {
+          user_id: string;
+          space_id: string;
+          share_phase: boolean;
+          share_symptoms: boolean;
+          partner_heads_up: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          space_id: string;
+          share_phase?: boolean;
+          share_symptoms?: boolean;
+          partner_heads_up?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["moon_share"]["Insert"]>;
+        Relationships: [];
+      };
+      moon_reminders: {
+        Row: {
+          id: string;
+          user_id: string;
+          space_id: string;
+          kind: MoonReminderKind;
+          label: string | null;
+          at_time: string;
+          enabled: boolean;
+          whatsapp: boolean;
+          dismissed_on: string | null;
+          sent_on: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          user_id: string;
+          space_id: string;
+          kind: MoonReminderKind;
+          label?: string | null;
+          at_time: string;
+          enabled?: boolean;
+          whatsapp?: boolean;
+          dismissed_on?: string | null;
+          sent_on?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["moon_reminders"]["Insert"]>;
+        Relationships: [];
+      };
+      moon_care_requests: {
+        Row: {
+          id: string;
+          space_id: string;
+          user_id: string;
+          recipient_id: string;
+          need: MoonNeed;
+          message: string | null;
+          acked_at: string | null;
+          closed_at: string | null;
+          created_at: string;
+        };
+        Insert: { id?: string; space_id: string; user_id: string; recipient_id: string; need: MoonNeed; message?: string | null };
+        // After sending, only moon_care_ack / moon_care_close change it.
+        Update: never;
+        Relationships: [];
+      };
       tags: {
         Row: { id: string; space_id: string; name: string; created_at: string };
         Insert: { id?: string; space_id: string; name: string };
@@ -892,6 +1002,9 @@ export type Database = {
       hold_set_kept: { Args: { p_session: string; p_keep: boolean }; Returns: undefined };
       hold_tidy: { Args: { p_space: string }; Returns: undefined };
       stay_open: { Args: { p_gift: string }; Returns: undefined };
+      moon_care_ack: { Args: { p_request: string }; Returns: undefined };
+      moon_care_close: { Args: { p_request: string }; Returns: undefined };
+      moon_partner_view: { Args: { p_space: string }; Returns: unknown };
       stay_put_away: { Args: { p_gift: string; p_away: boolean }; Returns: undefined };
       stay_edit: { Args: { p_gift: string; p_body: string | null }; Returns: undefined };
     };

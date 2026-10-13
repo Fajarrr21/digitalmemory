@@ -15,6 +15,7 @@ import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { getLiveRoom } from "@/lib/watch/queries";
 import { getHoldGlance } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
+import { getMoonData, getPartnerMoon, isCareActive } from "@/lib/moon/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
 import { getJourneyGlance } from "@/lib/journey/queries";
 import { footprintsSince } from "@/lib/journey/logic";
@@ -106,6 +107,36 @@ export default async function HomePage() {
 
   // stay, my love.: only THAT something is waiting on the bedside table.
   const stayUnopened = await countStayUnopened(ctx.userId);
+
+  // her little moon.: hers = her own status; his = ONLY what she sent/allowed.
+  let moon: { eyebrow: string; title: string; sub: string; warm: boolean } | null = null;
+  if (ctx.role === "keeper") {
+    const m = await getMoonData(ctx.userId, ctx.profile.timezone);
+    if (m.ready) {
+      const s = m.summary;
+      moon = {
+        eyebrow: "☾ her little moon.",
+        title: s.onPeriod
+          ? `Menstruasi hari ke-${s.cycleDay}. Pelan-pelan hari ini, ya.`
+          : s.cycleDay
+            ? `Hari ke-${s.cycleDay} siklusmu.`
+            : "Mengenal tubuhmu sendiri, pelan-pelan.",
+        sub: m.todayCheckin ? "Check-in hari ini sudah ada ♡ →" : "How is your body today? →",
+        warm: s.onPeriod,
+      };
+    }
+  } else {
+    const { ready, view } = await getPartnerMoon(ctx.spaceId, ctx.userId);
+    const asking = view.care.find((c) => isCareActive(c) && !c.acked_at);
+    if (ready && (asking || view.headsUpNow)) {
+      moon = {
+        eyebrow: `☾ dari ${them}`,
+        title: asking ? `${them} ingin sedikit perhatianmu.` : `Mungkin beberapa hari ini ${them} butuh perhatian lebih.`,
+        sub: "Lihat →",
+        warm: true,
+      };
+    }
+  }
 
   // Watch Together: if something is already on, the card becomes a way in.
   const liveRoom = await getLiveRoom(ctx.spaceId);
@@ -294,6 +325,26 @@ export default async function HomePage() {
               aria-hidden
               className="pointer-events-none absolute -right-1 -bottom-2 h-16 w-16 rounded-full bg-[radial-gradient(circle,#fff3e4_0%,#f4c7cf_35%,transparent_70%)] opacity-60 transition group-hover:scale-105"
             />
+          </PaperCard>
+        </Link>
+      ) : null}
+
+      {/* ☾ her little moon. */}
+      {moon ? (
+        <Link href="/moon" className="group block">
+          <PaperCard
+            className={
+              moon.warm
+                ? "relative overflow-hidden bg-gradient-to-br from-blush/50 to-paper transition group-hover:-translate-y-0.5"
+                : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+            }
+          >
+            <Eyebrow>{moon.eyebrow}</Eyebrow>
+            <p className="mt-3 font-display text-lg font-medium text-ink text-balance">{moon.title}</p>
+            <p className="mt-1 text-sm text-ink-soft">{moon.sub}</p>
+            <span aria-hidden className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105">
+              ☾
+            </span>
           </PaperCard>
         </Link>
       ) : null}

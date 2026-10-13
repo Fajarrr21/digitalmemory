@@ -7,6 +7,7 @@ import { localDateISO } from "@/lib/date";
 import { effectiveStatus } from "@/lib/hold/logic";
 import { countHoldWaiting } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
+import { getMoonNotices } from "@/lib/moon/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -15,7 +16,7 @@ import { countStayUnopened } from "@/lib/stay/queries";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay" | "moon";
 
 export type Notice = {
   id: string;
@@ -28,6 +29,8 @@ export type Notice = {
   href: string;
   /** Dismissable task nudges carry their reminder id. */
   reminderId?: string;
+  /** Dismissable her-little-moon reminders carry theirs. */
+  moonReminderId?: string;
   at: string;
 };
 
@@ -43,12 +46,13 @@ export async function getNotifications(
   userId: string,
   partnerId: string | null,
   timezone: string,
+  role: "keeper" | "author" = "keeper",
 ): Promise<NotificationFeed> {
   const supabase = await createClient();
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened, moonNotices] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -72,6 +76,8 @@ export async function getNotifications(
       .in("status", ["pending", "opened", "continued"]),
     // stay, my love.: one quiet line, however many little things are waiting.
     countStayUnopened(userId),
+    // her little moon.: her own reminders; for him only what she sent/allowed.
+    getMoonNotices(spaceId, userId, timezone, role),
   ]);
 
   const now: Notice[] = [];
@@ -136,6 +142,20 @@ export async function getNotifications(
     });
   }
 
+  for (const m of moonNotices) {
+    now.push({
+      id: m.id,
+      kind: "moon",
+      emoji: "☾",
+      label: "her little moon.",
+      title: m.title,
+      detail: m.detail,
+      href: m.href,
+      moonReminderId: m.reminderId,
+      at: m.at,
+    });
+  }
+
   if (flame.state.status === "waiting") {
     now.push({
       id: "flame-waiting",
@@ -178,11 +198,13 @@ export async function countWaiting(
   spaceId: string,
   userId: string,
   partnerId: string | null,
+  timezone: string | null = null,
+  role: "keeper" | "author" = "keeper",
 ): Promise<number> {
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }, holds, stayUnopened] = await Promise.all([
+    const [nudges, { count: sealed }, holds, stayUnopened, moon] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
@@ -191,13 +213,14 @@ export async function countWaiting(
         .eq("status", "sealed"),
       countHoldWaiting(userId),
       countStayUnopened(userId),
+      getMoonNotices(spaceId, userId, timezone, role),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0);
+    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0) + moon.length;
   } catch {
     return 0;
   }

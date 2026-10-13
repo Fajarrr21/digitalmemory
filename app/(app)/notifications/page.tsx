@@ -4,7 +4,7 @@ import { formatInstant } from "@/lib/date";
 import { getNotifications, type Notice } from "@/lib/notifications";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
-import { DismissNudge } from "./dismiss-nudge";
+import { DismissNudge, DismissMoonReminder } from "./dismiss-nudge";
 
 export const metadata = { title: "Notifications" };
 
@@ -22,6 +22,7 @@ export default async function NotificationsPage() {
     ctx.userId,
     partner?.id ?? null,
     ctx.profile.timezone,
+    ctx.role,
   );
 
   return (
@@ -96,6 +97,7 @@ function NoticeRow({
         </p>
       </Link>
       {notice.reminderId ? <DismissNudge reminderId={notice.reminderId} /> : null}
+      {notice.moonReminderId ? <DismissMoonReminder reminderId={notice.moonReminderId} /> : null}
     </div>
   );
 }
