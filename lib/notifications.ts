@@ -6,7 +6,7 @@ import { dueLabel } from "@/lib/tasks/logic";
 import { localDateISO } from "@/lib/date";
 import { effectiveStatus } from "@/lib/hold/logic";
 import { countHoldWaiting } from "@/lib/hold/queries";
-import { countCareWaiting, getCareWaiting } from "@/lib/care/queries";
+import { countStayUnopened } from "@/lib/stay/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -15,7 +15,7 @@ import { countCareWaiting, getCareWaiting } from "@/lib/care/queries";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "care";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay";
 
 export type Notice = {
   id: string;
@@ -48,7 +48,7 @@ export async function getNotifications(
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, cares] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -70,8 +70,8 @@ export async function getNotifications(
       .select("id, status, expires_at, created_at, updated_at")
       .eq("recipient_id", userId)
       .in("status", ["pending", "opened", "continued"]),
-    // Little Care: only THAT someone needs a little care — never symptoms.
-    getCareWaiting(userId),
+    // stay, my love.: one quiet line, however many little things are waiting.
+    countStayUnopened(userId),
   ]);
 
   const now: Notice[] = [];
@@ -123,16 +123,16 @@ export async function getNotifications(
     });
   }
 
-  for (const care of cares) {
+  if (stayUnopened) {
     now.push({
-      id: `care-${care.id}`,
-      kind: "care",
-      emoji: "🤍",
-      label: "Little Care",
-      title: "Ada seseorang yang butuh sedikit perhatianmu.",
-      detail: "Lihat apa yang dia butuhkan. ♡",
-      href: `/care/${care.id}`,
-      at: care.after_at && care.after_choice === "longer" ? care.after_at : care.created_at,
+      id: "stay-gifts",
+      kind: "stay",
+      emoji: "♡",
+      label: "stay, my love.",
+      title: "Ada sesuatu di samping kasurmu.",
+      detail: "Buka kalau kamu sempat.",
+      href: "/stay",
+      at: new Date().toISOString(),
     });
   }
 
@@ -182,7 +182,7 @@ export async function countWaiting(
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }, holds, cares] = await Promise.all([
+    const [nudges, { count: sealed }, holds, stayUnopened] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
@@ -190,14 +190,14 @@ export async function countWaiting(
         .eq("recipient_id", userId)
         .eq("status", "sealed"),
       countHoldWaiting(userId),
-      countCareWaiting(userId),
+      countStayUnopened(userId),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0) + holds + cares;
+    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0);
   } catch {
     return 0;
   }

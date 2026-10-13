@@ -469,36 +469,44 @@ migrations + setup.
   🔔 center + badge list waiting holds without details. Home card + a link from
   Comfort Room. Integration test: `node --env-file=.env.local
   scripts/test-hold.mjs`.
-- **Little Care (done, migration 0019 — run it in the SQL editor).** `/care` —
-  "A little comfort, from someone who loves you." A warm room for when one of
-  you is physically unwell; two-way like Hold. **Comfort, never treatment**:
-  no diagnosis, no medicine/dosage, no AI. Flow: Home (virtual bedroom + Care
-  Orb, `components/care/care-room.tsx`) → `/care/new`: symptoms (multi) +
-  severity + optional note, each with a share toggle → **warning-signs step**
-  (severe/worsening pain, repeated vomiting, can't keep fluids, dehydration,
-  fainting, heavy bleeding, possibly pregnant + pain) → What Would Help (warm /
-  drink / stay / quiet / surprise) → review → send. `safetyLevel` (pure, tested
-  in `lib/care/logic.ts`): any warning sign or severe+nausea → urgent, severe →
-  check; then `SafetyCard` (`components/care/safety-card.tsx`, tel 119/112)
-  sits ABOVE every comforting thing, and the sender may consent to share just
-  the flag `needs_check` (DB ignores it without a reason). `/care/[id]`: the
-  carer gets 5 actions — gesture (hug/glow/star, each its own `GestureBloom`
-  animation), a ≤280-char message (presets), accompany offer (chat/call), "I'll
-  let you rest", real help offer (drink/medical/family/close); offers wait for
-  the sender's **Iya, mau / Nanti dulu** (`care_answer`). Sender: care feed,
-  **Rest without pressure** switch (resting: no WhatsApp, no call offers, carer
-  gets ONE note for later — DB-enforced), and "A little better?" (better →
-  closed, optionally kept · longer → stays open + carer is waiting again ·
-  rest → rest mode); a severe/flagged session reminds them that feeling better
-  ≠ safe. Data model mirrors Hold: `care_sessions` holds only what was shared,
-  `care_private` (owner-only RLS) the full truth, `care_actions`; NO insert/
-  update RLS — all writes via security-definer `care_*` functions with
-  client_key idempotency. Un-kept sessions are scrubbed on close and deleted 7
-  days later; untouched ones expire after 3 days (`care_tidy`, lazy). WhatsApp
-  (`lib/notify/care.ts`) is generic only: carer once per session on create,
-  sender once on the first care (never resting/quiet/"rest"); opt-out
-  `profiles.notif_prefs.care_whatsapp`. Home card + 🔔 center + Comfort Room
-  link. Integration test: `node --env-file=.env.local scripts/test-care.mjs`.
+- **stay, my love. ♡ (done, migration 0020 — run it in the SQL editor).**
+  `/stay` — "You don't have to explain everything. You can just come here, get
+  comfortable, and let me leave a little love for you." Replaced Little Care
+  (0019 was retired: 0020 drops its tables/functions; the code is gone). NOT a
+  health feature — nothing asks how you feel. Each person has their own small
+  illustrated bedroom (one 400×500 SVG in `components/stay/room-scene.tsx`:
+  fairy lights, window rain/night/morning with swaying curtains, shelf,
+  bedside table + lamp + the "I'm here" jar + a gift cubby, bed, blanket that
+  morphs folded⇄tucked, a little character idle/sitting/lying, teddy bear on a
+  pouf), with real HTML buttons laid over every touchable object (a11y/touch).
+  Room behaviour is a pure, tested state machine (`lib/stay/room.ts`):
+  interactions only move forward (bed while lying → a line, not a restart),
+  `chipsFor` offers next steps under the room; lines live in `stay-config.ts`
+  (English, lowercase; functional UI stays Indonesian). Cinematic opening
+  ("hey, love." → "come in ♡", shorter on return via `stay_rooms.
+  intro_seen_at`); **"you can rest here."** dims, settles (lying, tucked, bear
+  beside, lamp warm), shows lines tap-to-advance, ends with the newest
+  **comfort message** from the partner, then stay / leave a note / go —
+  skippable + replayable. **Gifts** (`stay_gifts`): note (≤1000), voice
+  (reuses `VoiceRecorder`; private Storage `{space}/{sender}/stay/…`, signed
+  URLs, `VoicePlayer`), object (flower/heart/star/crane/moon + ≤140 line),
+  comfort (≤300). Left via `/stay/leave` (`gift-creator.tsx`: drafts in
+  localStorage, unsent recording guarded by beforeunload, upload is undone if
+  the insert fails; list of sent gifts with opened/put-away status, edit,
+  take back). Bedside table shows the newest 4 (unopened first,
+  `arrangeTable`), the rest live in "the little box". RLS: insert only AS
+  yourself TO your partner with audio in your own folder; after delivery only
+  security-definer `stay_open` / `stay_put_away` (recipient) and `stay_edit`
+  (sender, never voice); delete = sender takes it back. **Presence** is real,
+  never faked: private Realtime channel `stay:<space id>` (policy in 0020,
+  `use-stay-channel.ts`) — the jar glows pink only while the partner really is
+  in their room; tap → a heart floats across; `gift` broadcast makes the other
+  room refresh + sparkle. Prefs (`stay_rooms`, owner-only): scene, lamp, show
+  character, calm motion. WhatsApp: generic "Ada sesuatu yang ditinggalkan
+  untukmu…", at most once per 3h per person (`shouldNotify`, claimed via
+  `notified_at`), opt-out `notif_prefs.stay_whatsapp`. Home card + one 🔔
+  notice + Comfort Room link. No ambient audio (no assets). Integration test:
+  `node --env-file=.env.local scripts/test-stay.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
