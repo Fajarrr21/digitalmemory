@@ -32,6 +32,13 @@ import { checkAlternatives, checkPiece, needsRepair, type Issue } from "./qualit
  */
 
 const DEFAULT_MODEL = "gemini-3.8-flash";
+/** Tried in order when the one before is busy or its free quota is used up. */
+const FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-2.5-flash"];
+
+function modelChain(): string[] {
+  const first = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  return [first, ...FALLBACK_MODELS.filter((m) => m !== first)];
+}
 
 export type WordsAiErrorCode =
   | "no_key"
@@ -151,31 +158,44 @@ async function callStructured<S extends z.ZodType>(
   opts: { effort: Effort; maxTokens?: number; signal?: AbortSignal },
 ): Promise<z.infer<S>> {
   let text: string | undefined;
-  try {
-    const res = await client().models.generateContent({
-      model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
-      contents: brief,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseJsonSchema: jsonSchema(schema),
-        maxOutputTokens: opts.maxTokens ?? 16000,
-        thinkingConfig: { thinkingLevel: THINKING[opts.effort] },
-        abortSignal: opts.signal,
-        httpOptions: { timeout: 240_000 },
-      },
-    });
-    if (res.promptFeedback?.blockReason) throw new WordsAiError("refusal");
-    const finish = res.candidates?.[0]?.finishReason;
-    if (finish === "MAX_TOKENS") throw new WordsAiError("too_long");
-    if (finish && finish !== "STOP") {
-      // SAFETY / RECITATION / PROHIBITED_CONTENT / BLOCKLIST / SPII / OTHER…
-      console.error("[words] Gemini stopped:", finish);
-      throw new WordsAiError("refusal");
+  const models = modelChain();
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      const res = await client().models.generateContent({
+        model,
+        contents: brief,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: "application/json",
+          responseJsonSchema: jsonSchema(schema),
+          maxOutputTokens: opts.maxTokens ?? 16000,
+          // Gemini 2.5 takes a token budget (-1 = dynamic); 3.x takes a level.
+          thinkingConfig: model.startsWith("gemini-2.") ? { thinkingBudget: -1 } : { thinkingLevel: THINKING[opts.effort] },
+          abortSignal: opts.signal,
+          httpOptions: { timeout: 240_000 },
+        },
+      });
+      if (res.promptFeedback?.blockReason) throw new WordsAiError("refusal");
+      const finish = res.candidates?.[0]?.finishReason;
+      if (finish === "MAX_TOKENS") throw new WordsAiError("too_long");
+      if (finish && finish !== "STOP") {
+        // SAFETY / RECITATION / PROHIBITED_CONTENT / BLOCKLIST / SPII / OTHER…
+        console.error("[words] Gemini stopped:", finish);
+        throw new WordsAiError("refusal");
+      }
+      text = res.text;
+      break;
+    } catch (err) {
+      const e = toAiError(err, opts.signal);
+      // Busy (503/5xx) or out of free quota (429, counted per model): the
+      // next model in the chain usually still has room.
+      if ((e.code === "overloaded" || e.code === "rate_limited") && i < models.length - 1) {
+        console.warn(`[words] ${model} ${e.code} — falling back to ${models[i + 1]}`);
+        continue;
+      }
+      throw e;
     }
-    text = res.text;
-  } catch (err) {
-    throw toAiError(err, opts.signal);
   }
   if (!text) throw new WordsAiError("unknown");
   try {
@@ -228,9 +248,19 @@ export async function takeAiTicket(userId: string, kind: WordsAiKind): Promise<v
 
 /* -------------------------------------------------------------- helpers -- */
 
+const NL = String.fromCharCode(10);
+/** CRLF / CR / U+2028 line separator / U+0085 NEL. */
+const LINE_BREAKS = new RegExp(`${String.fromCharCode(13)}${String.fromCharCode(10)}?|[${String.fromCharCode(0x2028)}${String.fromCharCode(0x85)}]`, "g");
+const PARAGRAPH_SEPARATOR = new RegExp(String.fromCharCode(0x2029), "g");
+
 function clean(text: string): string {
   return text
-    .replace(/\r\n?/g, "\n")
+    // Every kind of line break becomes "\n": CRLF/CR, the Unicode line and
+    // paragraph separators and NEL (invisible on screen, so a poem's lines
+    // would otherwise run together), and a literal "\n" the model escaped twice.
+    .replace(LINE_BREAKS, NL)
+    .replace(PARAGRAPH_SEPARATOR, NL + NL)
+    .replace(/\\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
