@@ -14,8 +14,8 @@
     "seed:space": "node --env-file=.env.local scripts/seed-space.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.4.0",
     "@date-fns/tz": "^1.5.0",
+    "@google/genai": "^2.32.0",
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
     "browser-image-compression": "^2.0.2",

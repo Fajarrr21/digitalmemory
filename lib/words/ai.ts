@@ -1,6 +1,5 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { ApiError, GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { serverEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +19,7 @@ import {
 import { checkAlternatives, checkPiece, needsRepair, type Issue } from "./quality";
 
 /**
- * little words. — the literary companion, server-side only.
+ * little words. — the literary companion, server-side only (Google Gemini).
  *
  * - The API key never leaves the server (`serverEnv`, `server-only`).
  * - Only the text the writer typed into the current box is sent. Nothing
@@ -28,10 +27,11 @@ import { checkAlternatives, checkPiece, needsRepair, type Issue } from "./qualit
  * - Every result passes the deterministic checks in quality.ts; anything
  *   that fails gets ONE targeted repair request before it's shown.
  * - A soft cap (literary_ai_usage, no text stored) keeps a bug or a stuck
- *   button from running up a bill.
+ *   button from burning the free-tier quota in one evening.
+ * - Model: GEMINI_MODEL, default the stable Flash model (has a free tier).
  */
 
-const MODEL = "claude-opus-5-5";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 
 export type WordsAiErrorCode =
   | "no_key"
@@ -52,11 +52,11 @@ export class WordsAiError extends Error {
 }
 
 export const AI_ERROR_MESSAGES: Record<WordsAiErrorCode, string> = {
-  no_key: "Sang Muse belum dinyalakan — ANTHROPIC_API_KEY belum diatur di server.",
+  no_key: "Sang Muse belum dinyalakan — GEMINI_API_KEY belum diatur di server.",
   cap: "Hari ini sudah banyak sekali kata yang dicari. Istirahat sebentar, besok lanjut lagi ya. ♡",
   refusal: "Untuk tulisan ini aku tidak bisa membantu. Coba ubah sedikit gagasannya ya.",
   too_long: "Tulisannya terlalu panjang untuk diolah sekaligus. Coba persingkat atau pilih bagiannya.",
-  rate_limited: "Terlalu banyak permintaan sekaligus. Tunggu sebentar lalu coba lagi.",
+  rate_limited: "Kuota gratis Sang Muse sedang habis. Coba lagi sebentar lagi — atau besok. ♡",
   overloaded: "Sang Muse sedang sibuk sekali. Coba lagi sebentar lagi.",
   network: "Koneksinya terputus. Coba lagi ya.",
   aborted: "Dibatalkan.",
@@ -64,16 +64,16 @@ export const AI_ERROR_MESSAGES: Record<WordsAiErrorCode, string> = {
   unknown: "Ada yang salah saat mencari kata. Coba lagi ya.",
 };
 
-let cached: Anthropic | null = null;
-function client(): Anthropic {
-  const apiKey = serverEnv.anthropicApiKey;
+let cached: GoogleGenAI | null = null;
+function client(): GoogleGenAI {
+  const apiKey = serverEnv.geminiApiKey;
   if (!apiKey) throw new WordsAiError("no_key");
-  cached ??= new Anthropic({ apiKey, timeout: 240_000, maxRetries: 1 });
+  cached ??= new GoogleGenAI({ apiKey });
   return cached;
 }
 
 export function aiConfigured(): boolean {
-  return !!serverEnv.anthropicApiKey;
+  return !!serverEnv.geminiApiKey;
 }
 
 /* --------------------------------------------------------------- schemas -- */
@@ -128,57 +128,82 @@ export type Explanation = z.infer<typeof ExplainOut>;
 /* ------------------------------------------------------------ the call -- */
 
 type Effort = "low" | "medium" | "high";
+const THINKING: Record<Effort, ThinkingLevel> = {
+  low: ThinkingLevel.LOW,
+  medium: ThinkingLevel.MEDIUM,
+  high: ThinkingLevel.HIGH,
+};
 
+/** The zod schema as plain JSON Schema (minus the "$schema" header Gemini doesn't need). */
+function jsonSchema(schema: z.ZodType): Record<string, unknown> {
+  const { $schema: _drop, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>;
+  void _drop;
+  return rest;
+}
+
+/**
+ * One structured request: the zod schema becomes the JSON schema the model
+ * must answer in, and the answer is validated against it again here.
+ */
 async function callStructured<S extends z.ZodType>(
   schema: S,
   brief: string,
   opts: { effort: Effort; maxTokens?: number; signal?: AbortSignal },
 ): Promise<z.infer<S>> {
+  let text: string | undefined;
   try {
-    const res = await client().beta.messages.parse(
-      {
-        model: MODEL,
-        max_tokens: opts.maxTokens ?? 16000,
-        // Server-side fallback: if a safety classifier declines, the API
-        // retries on a fallback model in the same call.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: brief }],
-        output_config: { effort: opts.effort, format: betaZodOutputFormat(schema) },
+    const res = await client().models.generateContent({
+      model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+      contents: brief,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: "application/json",
+        responseJsonSchema: jsonSchema(schema),
+        maxOutputTokens: opts.maxTokens ?? 16000,
+        thinkingConfig: { thinkingLevel: THINKING[opts.effort] },
+        abortSignal: opts.signal,
+        httpOptions: { timeout: 240_000 },
       },
-      { signal: opts.signal },
-    );
-    if (res.stop_reason === "refusal") throw new WordsAiError("refusal");
-    if (res.stop_reason === "max_tokens") throw new WordsAiError("too_long");
-    if (!res.parsed_output) throw new WordsAiError("unknown");
-    return res.parsed_output as z.infer<S>;
+    });
+    if (res.promptFeedback?.blockReason) throw new WordsAiError("refusal");
+    const finish = res.candidates?.[0]?.finishReason;
+    if (finish === "MAX_TOKENS") throw new WordsAiError("too_long");
+    if (finish && finish !== "STOP") {
+      // SAFETY / RECITATION / PROHIBITED_CONTENT / BLOCKLIST / SPII / OTHER…
+      console.error("[words] Gemini stopped:", finish);
+      throw new WordsAiError("refusal");
+    }
+    text = res.text;
   } catch (err) {
-    throw toAiError(err);
+    throw toAiError(err, opts.signal);
+  }
+  if (!text) throw new WordsAiError("unknown");
+  try {
+    return schema.parse(JSON.parse(text)) as z.infer<S>;
+  } catch {
+    console.error("[words] Gemini answer did not match the schema");
+    throw new WordsAiError("unknown");
   }
 }
 
-function toAiError(err: unknown): WordsAiError {
+function toAiError(err: unknown, signal?: AbortSignal): WordsAiError {
   if (err instanceof WordsAiError) return err;
-  if (err instanceof Anthropic.APIUserAbortError) return new WordsAiError("aborted");
-  if (err instanceof Anthropic.RateLimitError) return new WordsAiError("rate_limited");
-  if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-    console.error("[words] Anthropic auth failed — check ANTHROPIC_API_KEY");
-    return new WordsAiError("no_key");
-  }
-  if (err instanceof Anthropic.BadRequestError) {
-    console.error("[words] bad request:", err.message);
+  if (signal?.aborted || (err instanceof Error && err.name === "AbortError")) return new WordsAiError("aborted");
+  if (err instanceof ApiError) {
+    if (err.status === 429) return new WordsAiError("rate_limited");
+    if (err.status === 401 || err.status === 403) {
+      console.error("[words] Gemini auth failed — check GEMINI_API_KEY");
+      return new WordsAiError("no_key");
+    }
+    if (err.status === 400) {
+      console.error("[words] Gemini bad request:", err.message);
+      return new WordsAiError("unknown");
+    }
+    if (err.status >= 500) return new WordsAiError("overloaded");
+    console.error("[words] Gemini API error", err.status, err.message);
     return new WordsAiError("unknown");
   }
-  if (err instanceof Anthropic.APIConnectionTimeoutError || err instanceof Anthropic.APIConnectionError) {
-    return new WordsAiError("network");
-  }
-  if (err instanceof Anthropic.InternalServerError) return new WordsAiError("overloaded");
-  if (err instanceof Anthropic.APIError) {
-    if (err.status === 529) return new WordsAiError("overloaded");
-    console.error("[words] API error", err.status, err.message);
-    return new WordsAiError("unknown");
-  }
+  if (err instanceof TypeError) return new WordsAiError("network");
   console.error("[words] unexpected", err);
   return new WordsAiError("unknown");
 }

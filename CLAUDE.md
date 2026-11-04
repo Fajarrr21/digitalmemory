@@ -544,7 +544,7 @@ migrations + setup.
   "around" the time. Integration test (synthetic 2020 dates, restores her
   real share settings): `node --env-file=.env.local scripts/test-moon.mjs`.
 - **little words. ♡ (done, migration 0022 — run it in the SQL editor; set
-  `ANTHROPIC_API_KEY` in `.env.local` + Vercel).** `/words` — "A little space
+  `GEMINI_API_KEY` in `.env.local` + Vercel).** `/words` — "A little space
   for everything we cannot always say." A private literary space: **The Muse**
   (`/words/muse`: idea → 1–3 genuinely different alternatives; form+style,
   theme/custom theme, genre, mood, depth 1–5, length, language, POV,
@@ -588,10 +588,14 @@ migrations + setup.
   your own work, fresh; reply only to something sent to you; delete only by the
   sender while unopened. **AI** (`lib/words/ai.ts`, server-only, route
   `app/api/words/ai/route.ts` with `maxDuration = 300` + AbortController
-  cancel): Claude `claude-opus-5-5` via `@anthropic-ai/sdk`
-  `beta.messages.parse` + `betaZodOutputFormat` (structured output), effort
-  high for generate/rewrite and medium for refine/explain/repair, server-side
-  refusal fallback (`fallbacks: "default"`). The system prompt
+  cancel): **Google Gemini** via `@google/genai` (`models.generateContent`,
+  model `GEMINI_MODEL` or default `gemini-3.8-flash`, which has a free tier —
+  deliberately NOT Claude, so the app runs on the user's own personal key).
+  Structured output = `responseMimeType: application/json` +
+  `responseJsonSchema` from the zod schema (`z.toJSONSchema`, `$schema`
+  stripped), re-validated with zod; `thinkingLevel` HIGH for generate/rewrite,
+  MEDIUM for refine/explain/repair; safety stops / blocked prompts → a gentle
+  "refusal" message, 429 → "free quota is used up". The system prompt
   (`lib/words/prompts.ts`) carries the brief's Indonesian literary standards,
   techniques, the anti-cliché rules and originality; the writer's text is fenced
   in tags as material, never instructions; ONLY the text in the box is sent

@@ -32,8 +32,9 @@ export const serverEnv = {
       process.env.SUPABASE_SERVICE_ROLE_KEY,
     );
   },
-  get anthropicApiKey() {
-    return process.env.ANTHROPIC_API_KEY ?? "";
+  /** Google Gemini — the little words. companion. Empty = AI buttons off. */
+  get geminiApiKey() {
+    return process.env.GEMINI_API_KEY ?? "";
   },
   /** Fonnte WhatsApp-gateway token. Empty = notifications disabled. */
   get fonnteToken() {

@@ -12,7 +12,7 @@ export function BackLink({ href = "/words", label = "little words." }: { href?: 
 export function AiOffNotice() {
   return (
     <div className="rounded-2xl border border-dashed border-rule bg-paper-2/40 p-4 text-sm text-ink-soft">
-      Sang Muse belum dinyalakan: <code className="font-mono text-xs">ANTHROPIC_API_KEY</code> belum diatur di server. Kamu tetap
+      Sang Muse belum dinyalakan: <code className="font-mono text-xs">GEMINI_API_KEY</code> belum diatur di server. Kamu tetap
       bisa menulis dan menyimpan dengan tanganmu sendiri. ♡
     </div>
   );
