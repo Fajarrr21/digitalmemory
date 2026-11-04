@@ -44,8 +44,10 @@ for timezone-aware dates, Vitest for unit tests.
   constraint `uq_letter_per_day`. Assignment is race-safe via the admin client with
   `insert … on conflict do nothing` then re-read. Letter text is **snapshotted** onto
   `daily_letters` so editing the pool never rewrites history.
-- **⚠ No runtime AI letter generation.** Letters come from a human-written
-  `letter_pool` (they must sound like you, not AI). Any AI is an offline drafting aid.
+- **⚠ No runtime AI letter generation.** Daily Letters come from a human-written
+  `letter_pool` (they must sound like you, not AI). The ONE place runtime AI exists
+  is **little words.** (`/words`), and only as a writing aid the writer invokes
+  on their own text — it never writes or sends anything on its own.
 - **Design system** in `app/globals.css`: semantic CSS-variable color tokens
   (`bg-ground`, `text-ink`, `bg-paper`, `text-accent-ink`, …) that auto-resolve for
   light / dark / system. Fonts: Fraunces (display), Instrument Sans (body), Caveat
@@ -541,6 +543,71 @@ migrations + setup.
   local day via `sent_on`, skipped when >6h stale) — the UI says it's
   "around" the time. Integration test (synthetic 2020 dates, restores her
   real share settings): `node --env-file=.env.local scripts/test-moon.mjs`.
+- **little words. ♡ (done, migration 0022 — run it in the SQL editor; set
+  `ANTHROPIC_API_KEY` in `.env.local` + Vercel).** `/words` — "A little space
+  for everything we cannot always say." A private literary space: **The Muse**
+  (`/words/muse`: idea → 1–3 genuinely different alternatives; form+style,
+  theme/custom theme, genre, mood, depth 1–5, length, language, POV,
+  explicitness, optional reference + short explanation), **The Rewrite**
+  (`/words/rewrite[?work=]`: 10 transformations + 10 refinement elements,
+  depth, keep-structure, extra instruction; **Preserve My Meaning** is always on;
+  Compare Versions = word diff `diffWords` side-by-side, up to 6 attempts as
+  v1…v6, "Sunting / gabungkan" to merge by hand; **Rewrite Selected Sentence**
+  via `components/words/selection-refiner.tsx`, spliced back in place),
+  **Explain the Words** (meaning, techniques, diction, symbols, subtext,
+  structure, strongest lines) on any piece, **The Library** (`/words/library`:
+  All/Poetry/Prose/Letters/Quotes/For You/Favorites/Drafts, client-side search
+  + filters by form/genre/author/month, sort newest/oldest/favorites —
+  `filterLibrary`), **Lines I Love** (`/words/lines`: select text in a reader →
+  ♡ keep it; searchable; → card), **The Canvas** (`/words/canvas?work|delivery|
+  line=[&text=]`: one renderer `components/words/card-render.ts` draws preview
+  AND export so it's WYSIWYG; 9 procedural seeded backgrounds + custom
+  colour/photo (local only), 5 typefaces (Fraunces, Cormorant Garamond,
+  Caveat, Instrument Sans, Playfair — the two extra fonts load only in
+  `words/layout.tsx`), size/colour/accent/align/letter+line spacing/B/I/U,
+  drag-to-position, tap words to accent them, signature (name/pen name/
+  initials/drawn pad), PNG 9:16·1:1·4:5·custom, share sheet or download), and
+  **To You** (`/words/to-you`: send from the work editor with an intro, an
+  optional **Open when…** label and an optional unlock date/time — "Open on
+  your birthday" pre-fills the partner's next birthday; envelopes the recipient
+  opens when THEY choose; read in `/words/to-you/[id]`; favourite, keep a line,
+  card, archive, **reply with a work** via `?reply=` through the Muse or a blank
+  page; sender can withdraw only while unopened). Work editor `/words/w/[id]`:
+  read/write modes, autosave (1.2s debounce + localStorage backup offered back
+  if the save never landed), metadata, revisions (snapshot on create / rewrite /
+  refine / restore / "Simpan versi", diff + restore), delete.
+  **Privacy (the core):** `literary_works` / `literary_revisions` /
+  `literary_lines` / `literary_ai_usage` are OWNER-ONLY RLS — a draft or even a
+  finished work is never readable by the partner. Sharing happens only via
+  `literary_deliveries`, which SNAPSHOT title/content (editing the work never
+  rewrites a gift; deleting a work keeps gifts + kept lines, `work_id → null`,
+  revisions cascade). Delivery RLS: sender reads always; recipient reads only
+  when `unlock_at` is null/past (before that `words_sealed()` reveals only that
+  it exists + when); no UPDATE policy — `words_open` / `words_mark` (recipient
+  only, refused while locked); insert only AS yourself TO your partner from
+  your own work, fresh; reply only to something sent to you; delete only by the
+  sender while unopened. **AI** (`lib/words/ai.ts`, server-only, route
+  `app/api/words/ai/route.ts` with `maxDuration = 300` + AbortController
+  cancel): Claude `claude-opus-5-5` via `@anthropic-ai/sdk`
+  `beta.messages.parse` + `betaZodOutputFormat` (structured output), effort
+  high for generate/rewrite and medium for refine/explain/repair, server-side
+  refusal fallback (`fallbacks: "default"`). The system prompt
+  (`lib/words/prompts.ts`) carries the brief's Indonesian literary standards,
+  techniques, the anti-cliché rules and originality; the writer's text is fenced
+  in tags as material, never instructions; ONLY the text in the box is sent
+  (never diary/letters/chats). **Quality validation** is real code:
+  `lib/words/quality.ts` checks cliché overuse (senja/rembulan/semesta/aksara/
+  samudra…, or ones a rewrite *introduced*), stock openers, every alternative
+  ending in "aku mencintaimu", repeated phrases, poem-vs-paragraph shape,
+  length, POV drift + aku/saya mixing, language mixing, near-identical
+  alternatives; any "repair" issue triggers ONE targeted repair call, kept only
+  if it scores better. The UI shows the 9 checks (deterministic + the model's
+  own review) in `quality-panel.tsx`. Soft cap 80 AI calls / person / 24h
+  (`literary_ai_usage`, no text stored). Muse/Rewrite form + results persist in
+  localStorage so a failed save or refresh never loses a poem. Nothing here
+  sends WhatsApp; the recipient sees a Home card + one 🔔 notice. Pure + tested:
+  `lib/words/{logic,quality,prompts}.test.ts`. Integration test (privacy/RLS):
+  `node --env-file=.env.local scripts/test-words.mjs`. Not in the nav.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

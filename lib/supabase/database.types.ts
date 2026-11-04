@@ -47,6 +47,14 @@ export type MoonMood = "calm" | "happy" | "sensitive" | "sad" | "irritable" | "a
 export type MoonFlow = "spotting" | "light" | "medium" | "heavy";
 export type MoonNeed = "extra_care" | "company" | "cheer" | "space" | "help" | "share";
 export type MoonReminderKind = "checkin" | "period" | "insights" | "custom";
+// little words. (0022)
+export type WorkType = "poetry" | "prose" | "letter" | "quote";
+export type WorkStatus = "draft" | "finished";
+export type WorkOrigin = "manual" | "muse" | "rewrite";
+export type WordsLanguage = "id" | "en";
+export type RevisionKind = "created" | "manual" | "rewrite" | "refine" | "restore";
+export type OpenWhen = "miss_me" | "tired" | "reminder" | "birthday" | "courage" | "right_time" | "custom";
+export type WordsAiKind = "generate" | "rewrite" | "refine" | "explain";
 
 
 type Timestamps = {
@@ -947,6 +955,141 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      literary_works: {
+        Row: {
+          id: string;
+          space_id: string;
+          author_id: string;
+          title: string;
+          content: string;
+          work_type: WorkType;
+          style: string | null;
+          theme: string | null;
+          genre: string | null;
+          mood: string | null;
+          language: WordsLanguage;
+          literary_depth: number | null;
+          status: WorkStatus;
+          origin: WorkOrigin;
+          is_favorite: boolean;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          author_id: string;
+          title?: string;
+          content?: string;
+          work_type?: WorkType;
+          style?: string | null;
+          theme?: string | null;
+          genre?: string | null;
+          mood?: string | null;
+          language?: WordsLanguage;
+          literary_depth?: number | null;
+          status?: WorkStatus;
+          origin?: WorkOrigin;
+          is_favorite?: boolean;
+        };
+        Update: Partial<Omit<Database["public"]["Tables"]["literary_works"]["Insert"], "id" | "space_id" | "author_id">>;
+        Relationships: [];
+      };
+      literary_revisions: {
+        Row: {
+          id: string;
+          work_id: string;
+          author_id: string;
+          title: string;
+          content: string;
+          kind: RevisionKind;
+          transformation: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          work_id: string;
+          author_id: string;
+          title?: string;
+          content: string;
+          kind: RevisionKind;
+          transformation?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      literary_deliveries: {
+        Row: {
+          id: string;
+          space_id: string;
+          work_id: string | null;
+          sender_id: string;
+          recipient_id: string;
+          title: string;
+          content: string;
+          work_type: WorkType;
+          genre: string | null;
+          mood: string | null;
+          language: WordsLanguage;
+          intro: string | null;
+          open_when: OpenWhen | null;
+          open_when_label: string | null;
+          unlock_at: string | null;
+          reply_to: string | null;
+          opened_at: string | null;
+          recipient_favorite: boolean;
+          recipient_archived: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          work_id?: string | null;
+          sender_id: string;
+          recipient_id: string;
+          title?: string;
+          content: string;
+          work_type: WorkType;
+          genre?: string | null;
+          mood?: string | null;
+          language?: WordsLanguage;
+          intro?: string | null;
+          open_when?: OpenWhen | null;
+          open_when_label?: string | null;
+          unlock_at?: string | null;
+          reply_to?: string | null;
+        };
+        // After giving, only words_open / words_mark change it.
+        Update: never;
+        Relationships: [];
+      };
+      literary_lines: {
+        Row: {
+          id: string;
+          space_id: string;
+          user_id: string;
+          text: string;
+          work_id: string | null;
+          delivery_id: string | null;
+          source_title: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          user_id: string;
+          text: string;
+          work_id?: string | null;
+          delivery_id?: string | null;
+          source_title?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      literary_ai_usage: {
+        Row: { id: string; user_id: string; kind: WordsAiKind; created_at: string };
+        Insert: { id?: string; user_id: string; kind: WordsAiKind };
+        Update: never;
+        Relationships: [];
+      };
       tags: {
         Row: { id: string; space_id: string; name: string; created_at: string };
         Insert: { id?: string; space_id: string; name: string };
@@ -1007,6 +1150,22 @@ export type Database = {
       moon_partner_view: { Args: { p_space: string }; Returns: unknown };
       stay_put_away: { Args: { p_gift: string; p_away: boolean }; Returns: undefined };
       stay_edit: { Args: { p_gift: string; p_body: string | null }; Returns: undefined };
+      words_open: { Args: { p_delivery: string }; Returns: undefined };
+      words_mark: {
+        Args: { p_delivery: string; p_favorite: boolean | null; p_archived: boolean | null };
+        Returns: undefined;
+      };
+      words_sealed: {
+        Args: { p_space: string };
+        Returns: {
+          id: string;
+          sender_id: string;
+          open_when: OpenWhen | null;
+          open_when_label: string | null;
+          unlock_at: string;
+          created_at: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
   };

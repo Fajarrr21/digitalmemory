@@ -8,6 +8,7 @@ import { effectiveStatus } from "@/lib/hold/logic";
 import { countHoldWaiting } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
 import { getMoonNotices } from "@/lib/moon/queries";
+import { countWordsWaiting } from "@/lib/words/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -16,7 +17,7 @@ import { getMoonNotices } from "@/lib/moon/queries";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay" | "moon";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay" | "moon" | "words";
 
 export type Notice = {
   id: string;
@@ -52,7 +53,7 @@ export async function getNotifications(
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened, moonNotices] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened, moonNotices, wordsWaiting] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -78,6 +79,8 @@ export async function getNotifications(
     countStayUnopened(userId),
     // her little moon.: her own reminders; for him only what she sent/allowed.
     getMoonNotices(spaceId, userId, timezone, role),
+    // little words.: given to me, unlocked, not yet opened.
+    countWordsWaiting(userId),
   ]);
 
   const now: Notice[] = [];
@@ -138,6 +141,19 @@ export async function getNotifications(
       title: "Ada sesuatu di samping kasurmu.",
       detail: "Buka kalau kamu sempat.",
       href: "/stay",
+      at: new Date().toISOString(),
+    });
+  }
+
+  if (wordsWaiting) {
+    now.push({
+      id: "words-waiting",
+      kind: "words",
+      emoji: "✒️",
+      label: "little words.",
+      title: wordsWaiting === 1 ? "Ada sebuah tulisan untukmu." : `Ada ${wordsWaiting} tulisan untukmu.`,
+      detail: "Buka saat rasanya tepat. ♡",
+      href: "/words/to-you",
       at: new Date().toISOString(),
     });
   }
@@ -204,7 +220,7 @@ export async function countWaiting(
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }, holds, stayUnopened, moon] = await Promise.all([
+    const [nudges, { count: sealed }, holds, stayUnopened, moon, words] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
@@ -214,13 +230,14 @@ export async function countWaiting(
       countHoldWaiting(userId),
       countStayUnopened(userId),
       getMoonNotices(spaceId, userId, timezone, role),
+      countWordsWaiting(userId),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0) + moon.length;
+    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0) + moon.length + (words ? 1 : 0);
   } catch {
     return 0;
   }

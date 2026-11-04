@@ -15,6 +15,7 @@ import { dueLabel, upcomingTasks } from "@/lib/tasks/logic";
 import { getLiveRoom } from "@/lib/watch/queries";
 import { getHoldGlance } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
+import { countWordsWaiting } from "@/lib/words/queries";
 import { getMoonData, getPartnerMoon, isCareActive } from "@/lib/moon/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
 import { getJourneyGlance } from "@/lib/journey/queries";
@@ -107,6 +108,9 @@ export default async function HomePage() {
 
   // stay, my love.: only THAT something is waiting on the bedside table.
   const stayUnopened = await countStayUnopened(ctx.userId);
+
+  // little words.: how many little words wait to be opened (null = not set up).
+  const wordsWaiting = await countWordsWaiting(ctx.userId);
 
   // her little moon.: hers = her own status; his = ONLY what she sent/allowed.
   let moon: { eyebrow: string; title: string; sub: string; warm: boolean } | null = null;
@@ -370,6 +374,30 @@ export default async function HomePage() {
               aria-hidden
               className="pointer-events-none absolute -right-1 -bottom-2 h-16 w-16 rounded-full bg-[radial-gradient(circle,#fff3e4_0%,#f4c27c_35%,transparent_70%)] opacity-60 transition group-hover:scale-105"
             />
+          </PaperCard>
+        </Link>
+      ) : null}
+
+      {/* ✒️ little words. */}
+      {wordsWaiting !== null ? (
+        <Link href={wordsWaiting > 0 ? "/words/to-you" : "/words"} className="group block">
+          <PaperCard
+            className={
+              wordsWaiting > 0
+                ? "relative overflow-hidden bg-gradient-to-br from-blush/50 to-paper transition group-hover:-translate-y-0.5"
+                : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+            }
+          >
+            <Eyebrow>little words. ♡</Eyebrow>
+            <p className="mt-3 font-display text-lg font-medium text-ink text-balance">
+              {wordsWaiting > 0
+                ? `${them} wrote something for you.`
+                : "A little space for everything we cannot always say."}
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">{wordsWaiting > 0 ? "Read it when it feels right →" : "Write something →"}</p>
+            <span aria-hidden className="pointer-events-none absolute -right-1 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105">
+              ✒️
+            </span>
           </PaperCard>
         </Link>
       ) : null}

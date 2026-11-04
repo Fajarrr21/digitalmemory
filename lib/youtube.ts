@@ -8,7 +8,7 @@
  */
 
 export type YTPlayer = {
-  loadVideoById: (o: { videoId: string; startSeconds?: number }) => void;
+  loadVideoById: (o: { videoId: string; startSeconds?: number; endSeconds?: number }) => void;
   cueVideoById?: (o: { videoId: string; startSeconds?: number }) => void;
   playVideo: () => void;
   pauseVideo: () => void;
