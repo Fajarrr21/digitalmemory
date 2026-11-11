@@ -9,6 +9,7 @@ import { countHoldWaiting } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
 import { getMoonNotices } from "@/lib/moon/queries";
 import { countWordsWaiting } from "@/lib/words/queries";
+import { getAdoreNotices } from "@/lib/adore/queries";
 
 /**
  * The 🔔 reminder center — everything that's quietly waiting for you, in one
@@ -17,7 +18,7 @@ import { countWordsWaiting } from "@/lib/words/queries";
  * flame) rather than keeping a notification table of its own.
  */
 
-export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay" | "moon" | "words";
+export type NoticeKind = "task" | "letter" | "flame" | "done" | "hold" | "stay" | "moon" | "words" | "adore";
 
 export type Notice = {
   id: string;
@@ -53,7 +54,7 @@ export async function getNotifications(
   const today = localDateISO(timezone);
   const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
 
-  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened, moonNotices, wordsWaiting] = await Promise.all([
+  const [nudges, { data: sealed }, flame, { data: doneRows }, { data: holds }, stayUnopened, moonNotices, wordsWaiting, adoreNotices] = await Promise.all([
     getDueNudges(spaceId, memberIds),
     supabase
       .from("direct_letters")
@@ -81,9 +82,14 @@ export async function getNotifications(
     getMoonNotices(spaceId, userId, timezone, role),
     // little words.: given to me, unlocked, not yet opened.
     countWordsWaiting(userId),
+    // the way i adore you.: his little notifications + "something is waiting".
+    getAdoreNotices(spaceId, role),
   ]);
 
   const now: Notice[] = [];
+  for (const a of adoreNotices) {
+    now.push({ ...a, kind: "adore", emoji: "♡", label: "the way i adore you." });
+  }
 
   for (const nudge of nudges) {
     // A nudge is only yours if the thing is (a shared one is both of yours).
@@ -220,7 +226,7 @@ export async function countWaiting(
   try {
     const supabase = await createClient();
     const memberIds = [userId, ...(partnerId ? [partnerId] : [])];
-    const [nudges, { count: sealed }, holds, stayUnopened, moon, words] = await Promise.all([
+    const [nudges, { count: sealed }, holds, stayUnopened, moon, words, adore] = await Promise.all([
       getDueNudges(spaceId, memberIds),
       supabase
         .from("direct_letters")
@@ -231,13 +237,14 @@ export async function countWaiting(
       countStayUnopened(userId),
       getMoonNotices(spaceId, userId, timezone, role),
       countWordsWaiting(userId),
+      getAdoreNotices(spaceId, role),
     ]);
     const mine = nudges.filter(
       (n) =>
         (n.task.assignedTo === null || n.task.assignedTo === userId) &&
         !n.task.completedBy.includes(userId),
     );
-    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0) + moon.length + (words ? 1 : 0);
+    return mine.length + (sealed ?? 0) + holds + (stayUnopened ? 1 : 0) + moon.length + (words ? 1 : 0) + adore.length;
   } catch {
     return 0;
   }

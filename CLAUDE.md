@@ -612,6 +612,66 @@ migrations + setup.
   sends WhatsApp; the recipient sees a Home card + one 🔔 notice. Pure + tested:
   `lib/words/{logic,quality,prompts}.test.ts`. Integration test (privacy/RLS):
   `node --env-file=.env.local scripts/test-words.mjs`. Not in the nav.
+- **the way i adore you. ♡ — Phase 1 (migration 0023 — run it in the SQL
+  editor).** `/adore` home · `/adore/reasons` Things I Adore · `/adore/open-when`
+  Open When You… · `/adore/eyes` Through My Eyes · `/adore/studio` Author Studio
+  (author-only; keeper redirected). ONE table `adore_contents` keyed by
+  `content_type` (later phases widen the check, no new tables); categories /
+  situations / chapters + reactions live in `adore-config.ts`. Status draft /
+  published / archived; "scheduled" is derived (published + future
+  `publish_at`, set in the author's timezone). **RLS is the gate**: keeper
+  selects only published + due rows; `adore_sealed()` reveals only kind +
+  category + when. Keeper has no UPDATE policy — open / favourite / reaction go
+  through security-definer `adore_mark`. One shared client reader
+  (`adore-reader.tsx`: list → note, prev/next/random, reactions, ☆ save; author
+  sees drafts/scheduled as a preview with badges). Content is human-written
+  only — no AI here. Nothing notifies. Home card. Not in the nav. Pure + tested
+  `lib/adore/logic.ts`; integration test: `node --env-file=.env.local
+  scripts/test-adore.mjs`.
+  **Phase 2 (migration 0024, run after 0023).** Two more kinds in the same
+  table: `thousand` (A Thousand Times, You — `/adore/thousand`, `number`
+  assigned by trigger under a per-space advisory lock, unique per space, body
+  optional; N/1000 progress + milestones 10…1000 via `milestoneProgress`,
+  search + category filter in the reader) and `surprise` (Tonight, I Choose
+  You — `/adore/surprise`, category = moment; morning/midnight only preset the
+  time, timing IS `publish_at` so RLS does the scheduling, no cron). Any item
+  can join the **surprise pool** (`in_pool`, `repeat_allowed`); the
+  "I need a little love" button (`surprise-box.tsx` → `drawSurprise`) draws
+  over RLS-visible rows with pure `pickSurprise` (unopened first, repeats only
+  if allowed, never the same twice in a row, warm default when empty); her
+  draw counts as opening. Optional Spotify song (`song_track_id`) on open-when
+  + surprises. `/adore/favorites` = "Things I want to read again".
+  **Phase 3 (migration 0025, run after 0024).** Six more kinds, same table,
+  "more little things" links on `/adore`: `remembered` (`/adore/remember` —
+  published = "I remembered this for you", draft = his private note),
+  `another_universe` (`/adore/universe`), `reasons_i_stay` (`/adore/stay`),
+  `future_wish` (`/adore/future` — `wish_state` someday/planned/in_progress/
+  fulfilled + `target_date` + `wish_note`; EITHER member moves it via
+  security-definer `adore_wish`, `wish-controls.tsx`; universes can be marked
+  fulfilled too), `name_page` (`/adore/name`, `name-page.tsx`, fixed poster
+  palettes by category cream/blush/night), `notification` (`/adore/notes`,
+  My Favorite Notification: when due it's in her 🔔 via `getAdoreNotices`
+  — which also adds one "You have a little something waiting" line for a new
+  surprise, never its words; WhatsApp ONLY if she opts in,
+  `notif_prefs.adore_whatsapp_per_day` 0–3, default 0, `notif-setting.tsx`;
+  `lib/adore/dispatch.ts` from layout `after()` + daily cron, claimed via
+  `notified_at`, skipped when >24h stale — pure `adoreWhatsAppDue`).
+  **Phase 4 (migration 0026, run after 0025).** Optional photo + voice note
+  per item (`photo_path`/`audio_path`/`audio_seconds`, private `media`
+  bucket under `{space}/{author}/adore/`, DB check pins the folder; the
+  editor compresses + uploads from the browser BEFORE saving and takes the
+  upload back if the save fails; replaced/removed/deleted files are removed
+  after the row stops pointing at them; shown via `signPaths` only for rows
+  the viewer can already read, incl. drawn surprises; `VoicePlayer` from
+  stay). Her **reply** per item (`reply_text`/`replied_at`, security-definer
+  `adore_reply`, rewrite or clear; `reply-box.tsx`), surfaced in the studio's
+  "yang baru dia buka". **All copy is Indonesian** (labels, categories,
+  reactions, wish states, status labels in `adore-config.ts`; category KEYS in
+  the DB are unchanged) — only the feature name "the way i adore you." stays.
+  `/adore` home also shows **baru ditambahkan** (newest readable) and **baru
+  dibaca** (her latest opened); items deep-link via `?id=` (`itemHref`),
+  which opens the reader straight onto that note (and counts as opening it).
+  Not built: recurring/random notifications.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

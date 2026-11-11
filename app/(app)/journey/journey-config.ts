@@ -27,7 +27,7 @@ export const JOURNEY_SONG = {
 // ── Awal cerita (ISI SENDIRI ✏️) ───────────────────────────────────────────────
 // Tanggal kalian mulai — dipakai untuk "N days". `YYYY-MM-DD`. Kalau "", angka
 // hari dihitung dari jejak paling awal di app ini.
-export const STARTED_ON = "";
+export const STARTED_ON = "2026-11-01";
 
 // "First"-nya kalian. Yang `value`-nya "" tidak ditampilkan — jadi isi yang
 // memang kamu ingat saja. `spotify` (opsional) = link lagu Spotify → muncul

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dispatchDueReminders } from "@/lib/tasks/dispatch";
 import { dispatchMoonReminders } from "@/lib/moon/dispatch";
+import { dispatchAdoreNotifications } from "@/lib/adore/dispatch";
 
 /**
  * Little Things — the scheduled half of reminder delivery.
@@ -28,5 +29,6 @@ export async function GET(request: Request) {
 
   const sent = await dispatchDueReminders();
   const moon = await dispatchMoonReminders().catch(() => 0);
-  return NextResponse.json({ ok: true, sent, moon });
+  const adore = await dispatchAdoreNotifications().catch(() => 0);
+  return NextResponse.json({ ok: true, sent, moon, adore });
 }

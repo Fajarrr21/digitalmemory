@@ -62,9 +62,80 @@ type Timestamps = {
   updated_at: string;
 };
 
+export type AdoreType =
+  | "reason"
+  | "open_when"
+  | "through_my_eyes"
+  | "thousand"
+  | "surprise"
+  | "remembered"
+  | "another_universe"
+  | "reasons_i_stay"
+  | "future_wish"
+  | "name_page"
+  | "notification";
+export type WishState = "someday" | "planned" | "in_progress" | "fulfilled";
+export type AdoreStatus = "draft" | "published" | "archived";
+export type AdoreReaction = "loved" | "emotional" | "smile" | "appreciated" | "favorite";
+
 export type Database = {
   public: {
     Tables: {
+      adore_contents: {
+        Row: {
+          id: string;
+          space_id: string;
+          author_id: string;
+          content_type: AdoreType;
+          title: string;
+          subtitle: string | null;
+          body: string;
+          category: string | null;
+          status: AdoreStatus;
+          publish_at: string;
+          opened_at: string | null;
+          favorite: boolean;
+          reaction: AdoreReaction | null;
+          number: number | null;
+          in_pool: boolean;
+          repeat_allowed: boolean;
+          song_track_id: string | null;
+          wish_state: WishState | null;
+          wish_note: string | null;
+          fulfilled_at: string | null;
+          target_date: string | null;
+          notified_at: string | null;
+          photo_path: string | null;
+          audio_path: string | null;
+          audio_seconds: number | null;
+          reply_text: string | null;
+          replied_at: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          space_id: string;
+          author_id: string;
+          content_type: AdoreType;
+          title: string;
+          subtitle?: string | null;
+          body: string;
+          category?: string | null;
+          status?: AdoreStatus;
+          publish_at?: string;
+          in_pool?: boolean;
+          repeat_allowed?: boolean;
+          song_track_id?: string | null;
+          wish_state?: WishState | null;
+          target_date?: string | null;
+          notified_at?: string | null;
+          photo_path?: string | null;
+          audio_path?: string | null;
+          audio_seconds?: number | null;
+        };
+        // The keeper never updates directly — only via adore_mark.
+        Update: Partial<Omit<Database["public"]["Tables"]["adore_contents"]["Insert"], "id" | "space_id" | "author_id">>;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -1105,6 +1176,22 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      adore_mark: {
+        Args: { p_id: string; p_favorite: boolean | null; p_reaction: string | null };
+        Returns: undefined;
+      };
+      adore_wish: {
+        Args: { p_id: string; p_state: WishState; p_note: string | null };
+        Returns: undefined;
+      };
+      adore_reply: {
+        Args: { p_id: string; p_text: string };
+        Returns: undefined;
+      };
+      adore_sealed: {
+        Args: { p_space: string };
+        Returns: { id: string; content_type: AdoreType; category: string | null; publish_at: string }[];
+      };
       hold_create: {
         Args: {
           p_space: string;

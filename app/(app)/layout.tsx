@@ -6,6 +6,7 @@ import { recordPresence } from "@/lib/flame";
 import { countWaiting } from "@/lib/notifications";
 import { dispatchDueRemindersQuietly } from "@/lib/tasks/dispatch";
 import { dispatchMoonRemindersQuietly } from "@/lib/moon/dispatch";
+import { dispatchAdoreNotificationsQuietly } from "@/lib/adore/dispatch";
 import { greeting } from "@/lib/greeting";
 import { localHour } from "@/lib/date";
 import { SideRail } from "@/components/nav/side-rail";
@@ -35,6 +36,7 @@ export default async function AppLayout({
   // so a slow gateway can never hold up a page.
   after(dispatchDueRemindersQuietly);
   after(dispatchMoonRemindersQuietly);
+  after(dispatchAdoreNotificationsQuietly);
 
   const partner = await getPartner(ctx.spaceId, ctx.userId);
   const waiting = await countWaiting(ctx.spaceId, ctx.userId, partner?.id ?? null, ctx.profile.timezone, ctx.role);

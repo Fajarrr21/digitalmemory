@@ -16,6 +16,7 @@ import { getLiveRoom } from "@/lib/watch/queries";
 import { getHoldGlance } from "@/lib/hold/queries";
 import { countStayUnopened } from "@/lib/stay/queries";
 import { countWordsWaiting } from "@/lib/words/queries";
+import { countAdoreUnopened } from "@/lib/adore/queries";
 import { getMoonData, getPartnerMoon, isCareActive } from "@/lib/moon/queries";
 import { WATCH_INVITATION } from "./watch/watch-config";
 import { getJourneyGlance } from "@/lib/journey/queries";
@@ -111,6 +112,9 @@ export default async function HomePage() {
 
   // little words.: how many little words wait to be opened (null = not set up).
   const wordsWaiting = await countWordsWaiting(ctx.userId);
+
+  // the way i adore you.: unopened notes for her (null = migration 0023 not run).
+  const adoreUnopened = await countAdoreUnopened(ctx.spaceId);
 
   // her little moon.: hers = her own status; his = ONLY what she sent/allowed.
   let moon: { eyebrow: string; title: string; sub: string; warm: boolean } | null = null;
@@ -398,6 +402,29 @@ export default async function HomePage() {
             <span aria-hidden className="pointer-events-none absolute -right-1 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105">
               ✒️
             </span>
+          </PaperCard>
+        </Link>
+      ) : null}
+
+      {/* ♡ the way i adore you. */}
+      {adoreUnopened !== null ? (
+        <Link href="/adore" className="group block">
+          <PaperCard
+            className={
+              ctx.role === "keeper" && adoreUnopened > 0
+                ? "relative overflow-hidden bg-gradient-to-br from-blush/50 to-paper transition group-hover:-translate-y-0.5"
+                : "relative overflow-hidden transition group-hover:-translate-y-0.5"
+            }
+          >
+            <Eyebrow>the way i adore you. ♡</Eyebrow>
+            <p className="mt-3 font-display text-lg font-medium text-ink text-balance">
+              {ctx.role === "keeper" && adoreUnopened > 0
+                ? "Ada sesuatu yang menunggumu."
+                : "Kalau kamu bisa melihat dirimu lewat mataku, kamu akan mengerti."}
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              {ctx.role === "keeper" ? (adoreUnopened > 0 ? `${adoreUnopened} hal kecil untuk dibuka →` : "Baca lagi →") : "Studio-mu →"}
+            </p>
           </PaperCard>
         </Link>
       ) : null}
