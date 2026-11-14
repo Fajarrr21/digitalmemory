@@ -126,12 +126,12 @@ function Prep({ view, onLocked }: { view: QuizView; onLocked: (v: QuizView) => v
   const answered = items.filter((it) => it.a.trim()).length;
   const complete = items.filter((it) => it.a.trim() && it.d.every((d) => d.trim())).length;
 
-  async function decoys(which: number | "all") {
+  async function decoys(which: number | "all", auto = false) {
     const list =
       which === "all"
         ? items.map((it, idx) => ({ idx, answer: it.a })).filter((x, idx) => x.answer.trim() && items[idx].d.some((d) => !d.trim()))
         : [{ idx: which, answer: items[which].a }];
-    if (!list.length) return setMsg("Semua pengecoh sudah terisi ♡");
+    if (!list.length) return auto ? undefined : setMsg("Semua pengecoh sudah terisi ♡");
     setBusy(which);
     setMsg(null);
     const res = await suggestDecoys(view.id, list);
@@ -156,7 +156,7 @@ function Prep({ view, onLocked }: { view: QuizView; onLocked: (v: QuizView) => v
         <p className="mt-2 font-display text-xl text-ink">Jawab jujur tentang dirimu sendiri.</p>
         <p className="mt-1 text-sm text-ink-soft">
           Jawabanmu jadi kunci saat {view.partnerName} menebak. Tiap jawaban butuh 3 pengecoh — tulis sendiri atau
-          minta ✨ dibuatkan, lalu periksa lagi. {view.partnerName} tidak bisa melihat isianmu.
+          biarkan ✨ AI membuatkannya otomatis setelah jawaban diisi, lalu periksa lagi. {view.partnerName} tidak bisa melihat isianmu.
         </p>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-rule">
           <div className="h-full bg-accent transition-all" style={{ width: `${(complete / QUIZ_SIZE) * 100}%` }} />
@@ -182,6 +182,11 @@ function Prep({ view, onLocked }: { view: QuizView; onLocked: (v: QuizView) => v
             value={items[i].a}
             maxLength={200}
             onChange={(e) => set(i, (it) => ({ ...it, a: e.target.value }))}
+            // Auto-suggest once an answer is written and its decoys are still blank;
+            // "all" also catches any question skipped while a request was running.
+            onBlur={() => {
+              if (busy == null && items[i].a.trim() && items[i].d.every((d) => !d.trim())) void decoys("all", true);
+            }}
             placeholder="Jawaban aslimu"
             className="mt-2 w-full rounded-xl border border-rule bg-ground px-3 py-2 text-ink outline-none focus:border-accent-ink"
           />
