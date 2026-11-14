@@ -48,6 +48,8 @@ for timezone-aware dates, Vitest for unit tests.
   `letter_pool` (they must sound like you, not AI). The ONE place runtime AI exists
   is **little words.** (`/words`), and only as a writing aid the writer invokes
   on their own text — it never writes or sends anything on its own.
+  (Second, same-spirit exception: the quiz's ✨ decoy suggester on `/quiz`,
+  invoked by the player on their own answers, always editable.)
 - **Design system** in `app/globals.css`: semantic CSS-variable color tokens
   (`bg-ground`, `text-ink`, `bg-paper`, `text-accent-ink`, …) that auto-resolve for
   light / dark / system. Fonts: Fraunces (display), Instrument Sans (body), Caveat
@@ -672,6 +674,24 @@ migrations + setup.
   dibaca** (her latest opened); items deep-link via `?id=` (`itemHref`),
   which opens the reader straight onto that note (and counts as opening it).
   Not built: recurring/random notifications.
+- **Seberapa Kenal Kita? — Phase 1 (migration 0027 — run it in the SQL
+  editor).** `/quiz` home (start w/ tone sweet/playful/savage, live game,
+  history) · `/quiz/[id]` the game. One live game per space (partial unique
+  index); the space IS the room (no codes, no 3rd player possible). Prep: each
+  fills 25 questions about themselves (bank in `lib/quiz/config.ts`) + 3 decoys
+  each, typed or ✨ suggested by Gemini (`suggestDecoys`, reuses exported
+  `callStructured` from `lib/words/ai.ts` with its own system prompt; only
+  those Q&A pairs are sent); draft in localStorage; lock = ready, options are
+  shuffled ONCE at lock (`option_order`, 0 = real answer); second lock starts
+  the game. Play: 25 rounds, no timer, pick locked on send (`quiz_picks` PK),
+  round advances when both picked (`update … where round = idx`), reveal shown
+  to both, polling 2.5s. **Secrecy:** sheets/picks only via server actions on
+  the admin client (RLS: owner reads own sheet, members read game row, picks
+  no client policy) — the partner never receives the real answer or correct
+  index before the round is revealed. Result: points/%, titles, winner/tie,
+  stats, "hal yang belum kamu ketahui", review. Pure + tested
+  `lib/quiz/logic.ts`. Not built yet (Phase 2/3): punishments, badges,
+  surprise questions, memory cards. Nothing notifies. Home card; not in nav.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

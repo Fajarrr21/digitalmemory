@@ -446,6 +446,23 @@ export default async function HomePage() {
         </PaperCard>
       </Link>
 
+      {/* ❤️ Seberapa Kenal Kita? */}
+      <Link href="/quiz" className="group block">
+        <PaperCard className="relative overflow-hidden transition group-hover:-translate-y-0.5">
+          <Eyebrow>❤️ seberapa kenal kita?</Eyebrow>
+          <p className="mt-3 font-display text-lg font-medium text-ink">
+            Katanya saling mengenal, sekarang buktikan.
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">Main →</p>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2 -bottom-3 text-6xl opacity-10 transition group-hover:scale-105"
+          >
+            🧠
+          </span>
+        </PaperCard>
+      </Link>
+
       {/* 🍿 Watch Together — one room, one watching, two people */}
       <Link
         href={

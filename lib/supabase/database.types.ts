@@ -10,6 +10,7 @@ export type MediaType = "image" | "video" | "audio";
 export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
 export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
+export type QuizStatus = "preparing" | "playing" | "completed" | "cancelled";
 export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
@@ -1165,6 +1166,57 @@ export type Database = {
         Row: { id: string; space_id: string; name: string; created_at: string };
         Insert: { id?: string; space_id: string; name: string };
         Update: Partial<{ name: string }>;
+        Relationships: [];
+      };
+      quiz_games: {
+        Row: {
+          id: string;
+          space_id: string;
+          created_by: string;
+          status: QuizStatus;
+          tone: "sweet" | "playful" | "savage";
+          round: number;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          created_by: string;
+          status?: QuizStatus;
+          tone?: "sweet" | "playful" | "savage";
+          round?: number;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["quiz_games"]["Insert"]>;
+        Relationships: [];
+      };
+      quiz_sheets: {
+        Row: {
+          game_id: string;
+          owner_id: string;
+          answers: { a: string; d: string[] }[];
+          option_order: number[][] | null;
+          locked_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          game_id: string;
+          owner_id: string;
+          answers?: { a: string; d: string[] }[];
+          option_order?: number[][] | null;
+          locked_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["quiz_sheets"]["Insert"]>;
+        Relationships: [];
+      };
+      quiz_picks: {
+        Row: { game_id: string; guesser_id: string; idx: number; choice: number; correct: boolean; created_at: string };
+        Insert: { game_id: string; guesser_id: string; idx: number; choice: number; correct: boolean };
+        Update: never;
         Relationships: [];
       };
       activity_tags: {

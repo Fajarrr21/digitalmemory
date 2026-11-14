@@ -152,10 +152,10 @@ function jsonSchema(schema: z.ZodType): Record<string, unknown> {
  * One structured request: the zod schema becomes the JSON schema the model
  * must answer in, and the answer is validated against it again here.
  */
-async function callStructured<S extends z.ZodType>(
+export async function callStructured<S extends z.ZodType>(
   schema: S,
   brief: string,
-  opts: { effort: Effort; maxTokens?: number; signal?: AbortSignal },
+  opts: { effort: Effort; maxTokens?: number; signal?: AbortSignal; system?: string },
 ): Promise<z.infer<S>> {
   let text: string | undefined;
   const models = modelChain();
@@ -166,7 +166,7 @@ async function callStructured<S extends z.ZodType>(
         model,
         contents: brief,
         config: {
-          systemInstruction: SYSTEM_PROMPT,
+          systemInstruction: opts.system ?? SYSTEM_PROMPT,
           responseMimeType: "application/json",
           responseJsonSchema: jsonSchema(schema),
           maxOutputTokens: opts.maxTokens ?? 16000,
