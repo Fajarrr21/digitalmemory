@@ -98,3 +98,32 @@ export const TITLES: { min: number; title: string }[] = [
   { min: 40, title: "Lumayan Kenal" },
   { min: 0, title: "Kenalan Lagi Yuk 😭" },
 ];
+
+export type PunishKind = "sweet" | "funny" | "savage";
+
+/** Hand-written punishment pool. Always playful, always swappable. */
+export const PUNISHMENTS: Record<PunishKind, string[]> = {
+  sweet: [
+    "Kirim voice note berisi lima alasan kenapa kamu sayang dia.",
+    "Tulis satu paragraf surat cinta (boleh lewat Letters ♡).",
+    "Berikan sepuluh pujian tanpa mengulang kata.",
+    "Buat playlist khusus untuknya, minimal 5 lagu.",
+    "Ceritakan momen pertama kamu sadar suka sama dia.",
+    "Gambar dia (sejelek apa pun) lalu kirim fotonya.",
+  ],
+  funny: [
+    "Kirim selfie dengan ekspresi paling absurd.",
+    "Buat pantun cinta spontan, sekarang juga.",
+    "Ganti nama kontaknya jadi pilihan dia selama 24 jam.",
+    "Kirim voice note pakai suara karakter kartun.",
+    "Nyanyikan reff lagu pilihannya lewat voice note.",
+    "Peragakan cara dia marah, kirim videonya (dia yang menilai).",
+  ],
+  savage: [
+    "Buat pengakuan resmi bahwa dia lebih pintar darimu.",
+    "Tulis surat permohonan maaf dengan bahasa super formal karena kurang perhatian.",
+    "Akui bahwa ingatanmu tentang dia perlu di-upgrade, lengkap dengan alasannya.",
+    "Pasang status \"Aku kalah kuis dari pacarku\" selama 1 jam.",
+    "Hafalkan 3 jawaban yang salah tadi, lalu dia boleh mengetesmu besok.",
+  ],
+};

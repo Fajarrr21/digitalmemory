@@ -1,4 +1,4 @@
-import { FEEDBACK, POINTS, QUESTIONS, QUIZ_SIZE, TITLES, type QuizTone } from "./config";
+import { FEEDBACK, POINTS, PUNISHMENTS, QUESTIONS, QUIZ_SIZE, TITLES, type QuizTone } from "./config";
 
 /** One sheet row: the real answer + three decoys. */
 export type SheetItem = { a: string; d: string[] };
@@ -74,4 +74,13 @@ export function scoreOf(guesses: Guess[]) {
 /** "me" | "partner" | "tie" — same 25 questions each, so counts compare directly. */
 export function winnerOf(myRight: number, partnerRight: number): "me" | "partner" | "tie" {
   return myRight === partnerRight ? "tie" : myRight > partnerRight ? "me" : "partner";
+}
+
+/** One suggestion per kind (sweet · funny · savage), avoiding the ones just shown. */
+export function drawPunishments(exclude: string[] = [], rand: () => number = Math.random): string[] {
+  return Object.values(PUNISHMENTS).map((pool) => {
+    const fresh = pool.filter((p) => !exclude.includes(p));
+    const from = fresh.length ? fresh : pool;
+    return from[Math.floor(rand() * from.length)];
+  });
 }

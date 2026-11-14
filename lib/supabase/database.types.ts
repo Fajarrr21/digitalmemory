@@ -10,6 +10,7 @@ export type MediaType = "image" | "video" | "audio";
 export type UnlockType = "always" | "date" | "streak" | "manual";
 export type ThemePref = "system" | "light" | "dark";
 export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
+export type QuizPunishState = "choosing" | "chosen" | "approved" | "done";
 export type QuizStatus = "preparing" | "playing" | "completed" | "cancelled";
 export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
@@ -1179,6 +1180,9 @@ export type Database = {
           created_at: string;
           started_at: string | null;
           completed_at: string | null;
+          punish_options: string[] | null;
+          punish_choice: string | null;
+          punish_state: QuizPunishState | null;
         };
         Insert: {
           id?: string;
@@ -1189,6 +1193,9 @@ export type Database = {
           round?: number;
           started_at?: string | null;
           completed_at?: string | null;
+          punish_options?: string[] | null;
+          punish_choice?: string | null;
+          punish_state?: QuizPunishState | null;
         };
         Update: Partial<Database["public"]["Tables"]["quiz_games"]["Insert"]>;
         Relationships: [];

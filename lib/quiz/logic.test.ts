@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { QUESTIONS, QUIZ_SIZE } from "./config";
-import { feedbackFor, optionsFor, randomOrder, scoreOf, sheetProblem, titleFor, winnerOf } from "./logic";
+import { drawPunishments, feedbackFor, optionsFor, randomOrder, scoreOf, sheetProblem, titleFor, winnerOf } from "./logic";
 
 const full = () => Array.from({ length: QUIZ_SIZE }, (_, i) => ({ a: `a${i}`, d: [`x${i}`, `y${i}`, `z${i}`] }));
 
@@ -39,5 +39,14 @@ describe("quiz logic", () => {
 
   it("feedback is stable per seed", () => {
     expect(feedbackFor("savage", false, "g:1:u")).toEqual(feedbackFor("savage", false, "g:1:u"));
+  });
+
+  it("drawPunishments: one per kind, avoids the last set", () => {
+    const first = drawPunishments();
+    expect(first).toHaveLength(3);
+    for (let i = 0; i < 30; i++) {
+      const next = drawPunishments(first);
+      next.forEach((p) => expect(first).not.toContain(p));
+    }
   });
 });

@@ -4,9 +4,9 @@ import { z } from "zod";
 import { getPartner, getSpaceContext } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { QUESTIONS, QUIZ_SIZE, type QuizTone } from "@/lib/quiz/config";
-import { optionsFor, randomOrder, sheetProblem, type SheetItem } from "@/lib/quiz/logic";
+import { drawPunishments, optionsFor, randomOrder, sheetProblem, type SheetItem } from "@/lib/quiz/logic";
 import { AI_ERROR_MESSAGES, WordsAiError, callStructured } from "@/lib/words/ai";
-import type { QuizStatus } from "@/lib/supabase/database.types";
+import type { QuizPunishState, QuizStatus } from "@/lib/supabase/database.types";
 
 /**
  * Seberapa Kenal Kita? — every read/write of sheets and picks goes through
@@ -33,6 +33,8 @@ export type QuizView = {
   current: { idx: number; options: string[]; myChoice: number | null; partnerAnswered: boolean } | null;
   /** Rounds both of us answered: mine = my guess about them, theirs = theirs about me. */
   revealed: RevealedRound[];
+  /** Funny Punishment, once a game ended with a loser (null on a tie). */
+  punish: { loserIsMe: boolean; options: string[]; choice: string | null; state: QuizPunishState } | null;
 };
 
 export type QuizResult = { ok?: boolean; error?: string; view?: QuizView; id?: string };
@@ -92,6 +94,29 @@ export async function getQuizState(gameId: string): Promise<QuizResult> {
     };
   }
 
+  let punish: QuizView["punish"] = null;
+  if (game.status === "completed") {
+    const right = (who: string) => picks?.filter((p) => p.guesser_id === who && p.correct).length ?? 0;
+    const myRight = right(ctx.userId);
+    const theirRight = right(partner.id);
+    if (myRight !== theirRight) {
+      let g = game;
+      if (!g.punish_options) {
+        // First look after the game ended: draw the first three (race-safe).
+        await admin
+          .from("quiz_games")
+          .update({ punish_options: drawPunishments(), punish_state: "choosing" })
+          .eq("id", game.id)
+          .is("punish_options", null);
+        const { data } = await admin.from("quiz_games").select("*").eq("id", game.id).single();
+        if (data) g = data;
+      }
+      if (g.punish_options && g.punish_state) {
+        punish = { loserIsMe: myRight < theirRight, options: g.punish_options, choice: g.punish_choice, state: g.punish_state };
+      }
+    }
+  }
+
   return {
     ok: true,
     view: {
@@ -107,6 +132,7 @@ export async function getQuizState(gameId: string): Promise<QuizResult> {
       partnerLocked: !!theirs?.locked_at,
       current,
       revealed,
+      punish,
     },
   };
 }
@@ -242,6 +268,38 @@ export async function cancelGame(gameId: string): Promise<QuizResult> {
   if (!l) return { error: "Permainan ini tidak ditemukan." };
   await l.admin.from("quiz_games").update({ status: "cancelled" }).eq("id", gameId).in("status", ["preparing", "playing"]);
   return { ok: true };
+}
+
+/* ---------------------------------------------------- funny punishment -- */
+
+/**
+ * reroll: either of us, any time before done (nobody does one they're not
+ * comfortable with). choose / done: the loser. approve: the winner.
+ */
+export async function punishAction(
+  gameId: string,
+  kind: "reroll" | "choose" | "approve" | "done",
+  choice?: string,
+): Promise<QuizResult> {
+  const state = await getQuizState(gameId);
+  const p = state.view?.punish;
+  if (!p) return state.view ? { error: "Tidak ada hukuman di permainan ini." } : state;
+  if (p.state === "done") return state;
+
+  let patch: { punish_options?: string[]; punish_choice?: string | null; punish_state: QuizPunishState } | null = null;
+
+  if (kind === "reroll") {
+    patch = { punish_options: drawPunishments(p.options), punish_choice: null, punish_state: "choosing" };
+  } else if (kind === "choose" && p.loserIsMe && choice && p.options.includes(choice)) {
+    patch = { punish_choice: choice, punish_state: "chosen" };
+  } else if (kind === "approve" && !p.loserIsMe && p.state === "chosen") {
+    patch = { punish_state: "approved" };
+  } else if (kind === "done" && p.loserIsMe && p.state === "approved") {
+    patch = { punish_state: "done" };
+  }
+  if (!patch) return { error: "Langkah ini belum bisa dilakukan." };
+  await createAdminClient().from("quiz_games").update(patch).eq("id", gameId).neq("punish_state", "done");
+  return getQuizState(gameId);
 }
 
 /* --------------------------------------------------------- AI decoys -- */

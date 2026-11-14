@@ -14,6 +14,7 @@ import {
   answerRound,
   cancelGame,
   getQuizState,
+  punishAction,
   lockSheet,
   saveSheet,
   suggestDecoys,
@@ -38,7 +39,8 @@ export function QuizGame({ initial }: { initial: QuizView }) {
 
   const waiting =
     (view.status === "preparing" && view.myLocked) ||
-    (view.status === "playing" && view.current?.myChoice != null);
+    (view.status === "playing" && view.current?.myChoice != null) ||
+    (view.status === "completed" && !!view.punish && view.punish.state !== "done");
   useEffect(() => {
     if (!waiting) return;
     const t = setInterval(() => void refresh(), POLL_MS);
@@ -73,7 +75,7 @@ export function QuizGame({ initial }: { initial: QuizView }) {
   if (pending) {
     return <Reveal view={view} r={pending} onNext={() => setAck((a) => a + 1)} />;
   }
-  if (view.status === "completed") return <Result view={view} />;
+  if (view.status === "completed") return <Result view={view} onChange={setView} />;
   if (view.current) return <Play key={view.current.idx} view={view} onAnswered={setView} />;
   return null;
 }
@@ -363,7 +365,7 @@ function Reveal({ view, r, onNext }: { view: QuizView; r: RevealedRound; onNext:
 
 /* ---------------------------------------------------------- result -- */
 
-function Result({ view }: { view: QuizView }) {
+function Result({ view, onChange }: { view: QuizView; onChange: (v: QuizView) => void }) {
   const reduce = useReducedMotion();
   const me = scoreOf(view.revealed.map((r) => ({ idx: r.idx, correct: r.mine.correct })));
   const them = scoreOf(view.revealed.map((r) => ({ idx: r.idx, correct: r.theirs.correct })));
@@ -418,6 +420,12 @@ function Result({ view }: { view: QuizView }) {
         </PaperCard>
       </motion.div>
 
+      {view.punish && (
+        <motion.div {...step(3.5)}>
+          <Punishment view={view} onChange={onChange} />
+        </motion.div>
+      )}
+
       <motion.div {...step(4)}>
         <PaperCard>
           <Eyebrow>statistik</Eyebrow>
@@ -462,6 +470,94 @@ function Result({ view }: { view: QuizView }) {
         <Link href="/quiz" className="text-sm text-accent-ink hover:underline">← Kembali</Link>
       </div>
     </div>
+  );
+}
+
+function Punishment({ view, onChange }: { view: QuizView; onChange: (v: QuizView) => void }) {
+  const p = view.punish!;
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const loser = p.loserIsMe;
+  const act = (kind: "reroll" | "choose" | "approve" | "done", choice?: string) =>
+    start(async () => {
+      setError(null);
+      const r = await punishAction(view.id, kind, choice);
+      if (r.error) setError(r.error);
+      if (r.view) onChange(r.view);
+    });
+  const swap = (label: string) => (
+    <button type="button" disabled={pending} onClick={() => act("reroll")} className="text-xs text-ink-faint hover:text-accent-ink">
+      {label}
+    </button>
+  );
+
+  return (
+    <PaperCard>
+      <Eyebrow>funny punishment 😈</Eyebrow>
+      <p className="mt-2 font-display text-xl text-ink">
+        {loser ? "Kamu kalah. Pilih hukumanmu." : `${view.partnerName} kalah. Saatnya hukuman!`}
+      </p>
+
+      {p.state === "choosing" && (
+        <>
+          <ul className="mt-4 space-y-2">
+            {p.options.map((o) => (
+              <li key={o}>
+                {loser ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => act("choose", o)}
+                    className="w-full rounded-2xl border border-rule bg-ground px-4 py-3 text-left text-sm text-ink transition hover:border-accent-ink/40"
+                  >
+                    {o}
+                  </button>
+                ) : (
+                  <p className="rounded-2xl border border-rule px-4 py-3 text-sm text-ink-soft">{o}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-ink-soft">{loser ? "" : `Menunggu ${view.partnerName} memilih…`}</p>
+            {swap("🎲 pilihan lain")}
+          </div>
+        </>
+      )}
+
+      {p.state !== "choosing" && (
+        <p className="mt-4 rounded-2xl border border-accent-ink/40 bg-blush/30 px-4 py-3 text-ink">{p.choice}</p>
+      )}
+
+      {p.state === "chosen" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {loser ? (
+            <p className="text-sm text-ink-soft">Menunggu {view.partnerName} menyetujui…</p>
+          ) : (
+            <>
+              <Button size="sm" disabled={pending} onClick={() => act("approve")}>Setuju ✓</Button>
+              <Button size="sm" variant="soft" disabled={pending} onClick={() => act("reroll")}>Minta yang lain</Button>
+            </>
+          )}
+          {loser && swap("Ganti — nggak nyaman")}
+        </div>
+      )}
+
+      {p.state === "approved" && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          {loser ? (
+            <Button size="sm" disabled={pending} onClick={() => act("done")}>Tandai selesai ✓</Button>
+          ) : (
+            <p className="text-sm text-ink-soft">Menunggu {view.partnerName} menjalankannya… 😏</p>
+          )}
+          {swap("Ganti — nggak nyaman")}
+        </div>
+      )}
+
+      {p.state === "done" && <p className="mt-3 font-hand text-xl text-accent-ink">Hukuman selesai ✓ Impas ya. ♡</p>}
+      {error && <p className="mt-2 text-sm text-accent-ink">{error}</p>}
+      <p className="mt-3 text-[11px] text-ink-faint">Cuma bercanda — siapa pun boleh ganti kalau nggak nyaman.</p>
+    </PaperCard>
   );
 }
 

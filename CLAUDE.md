@@ -690,8 +690,15 @@ migrations + setup.
   no client policy) — the partner never receives the real answer or correct
   index before the round is revealed. Result: points/%, titles, winner/tie,
   stats, "hal yang belum kamu ketahui", review. Pure + tested
-  `lib/quiz/logic.ts`. Not built yet (Phase 2/3): punishments, badges,
-  surprise questions, memory cards. Nothing notifies. Home card; not in nav.
+  `lib/quiz/logic.ts`. Nothing notifies. Home card; not in nav.
+  **Phase 2 — Funny Punishment (migration 0028).** Columns on `quiz_games`
+  (`punish_options`/`punish_choice`/`punish_state` choosing→chosen→approved→
+  done). After a non-tie game the first `getQuizState` draws 3 (one sweet /
+  funny / savage) from the hand-written `PUNISHMENTS` pool (no AI —
+  `drawPunishments`, avoids the last set); loser picks, winner approves or
+  asks for others, either may 🎲 swap any time before done, loser marks done.
+  `punishAction` enforces who may do what. Without 0028 the card just hides.
+  Not built yet (Phase 3): badges, surprise questions, memory cards.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
