@@ -15,7 +15,7 @@ export default async function DiceHome() {
   const partner = await getPartner(ctx.spaceId, ctx.userId);
   const admin = createAdminClient();
   const [{ data: live }, { count: games }, { data: turns }, { count: memories }] = await Promise.all([
-    admin.from("dice_games").select("id, status, mode").eq("space_id", ctx.spaceId).in("status", ["lobby", "playing"]).maybeSingle(),
+    admin.from("dice_games").select("id, status, mode, kind").eq("space_id", ctx.spaceId).in("status", ["lobby", "playing"]).maybeSingle(),
     admin.from("dice_games").select("id", { count: "exact", head: true }).eq("space_id", ctx.spaceId).neq("status", "lobby"),
     admin.from("dice_turns").select("category, player_id").eq("space_id", ctx.spaceId).eq("status", "done"),
     admin.from("dice_memories").select("id", { count: "exact", head: true }).eq("space_id", ctx.spaceId),
@@ -33,8 +33,9 @@ export default async function DiceHome() {
         <h1 className="mt-3 font-display text-3xl text-ink">Satu dadu, dua orang, banyak hal kecil.</h1>
         <p className="mt-2 font-hand text-xl text-ink-soft">{DICE_TAGLINE}</p>
         <p className="mt-3 text-sm text-ink-soft">
-          Gantian melempar dadu. Tiap sisi punya kategorinya sendiri — jawab, lakukan, atau lewati. Tidak ada skor,
-          tidak ada yang kalah. Cuma kita, sedikit lebih kenal.
+          Gantian melempar dadu. Main <b className="font-medium text-ink">Ular Tangga</b> — kena ular, naik tangga,
+          atau mampir di kotak ♥ berarti ada tantangan — atau <b className="font-medium text-ink">Lempar Bebas</b>, satu
+          tantangan tiap lemparan. Jawab, lakukan, atau lewati. Cuma kita, sedikit lebih kenal.
         </p>
         <span aria-hidden className="pointer-events-none absolute -right-3 -bottom-4 text-8xl opacity-10">
           🎲
@@ -45,6 +46,7 @@ export default async function DiceHome() {
         <Link href={`/dice/${live.id}`} className="group block">
           <PaperCard lift className="bg-gradient-to-br from-blush/40 to-paper transition group-hover:-translate-y-0.5">
             <Eyebrow>
+              {live.kind === "board" ? "🐍🪜 ular tangga" : "🎲 lempar bebas"} ·{" "}
               {live.status === "lobby" ? "menunggu di lobby" : "sedang bermain"} ·{" "}
               {MODES.find((m) => m.key === live.mode)?.label} mode
             </Eyebrow>

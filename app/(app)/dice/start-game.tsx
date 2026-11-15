@@ -11,11 +11,36 @@ import { createDiceGame } from "./actions";
 export function StartGame() {
   const router = useRouter();
   const [mode, setMode] = useState<DiceMode>("soft");
+  const [kind, setKind] = useState<"free" | "board">("board");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
     <div>
-      <p className="text-sm text-ink-soft">Malam ini mau yang seperti apa?</p>
+      <p className="text-sm text-ink-soft">Mainnya mau yang mana?</p>
+      <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Jenis permainan">
+        {(
+          [
+            ["board", "🐍🪜 Ular Tangga", "30 kotak · ular, tangga & ♥ memberi tantangan · ada pemenang"],
+            ["free", "🎲 Lempar Bebas", "tiap lemparan satu tantangan · tanpa skor"],
+          ] as const
+        ).map(([k, label, hint]) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={kind === k}
+            onClick={() => setKind(k)}
+            className={cn(
+              "rounded-2xl border px-4 py-3 text-left transition active:scale-[0.98]",
+              kind === k ? "border-accent-ink bg-blush/40" : "border-rule hover:border-accent-ink/40",
+            )}
+          >
+            <span className="block font-display text-base text-ink">{label}</span>
+            <span className="block text-xs text-ink-faint">{hint}</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-5 text-sm text-ink-soft">Suasana tantangannya?</p>
       <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Mode permainan">
         {MODES.map((m) => (
           <button
@@ -42,7 +67,7 @@ export function StartGame() {
         disabled={pending}
         onClick={() =>
           start(async () => {
-            const r = await createDiceGame(mode);
+            const r = await createDiceGame(mode, kind);
             if (r.id) router.push(`/dice/${r.id}`);
             else setError(r.error ?? "Gagal memulai.");
           })

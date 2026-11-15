@@ -28,6 +28,14 @@ for (const table of ["dice_games", "dice_players", "dice_turns", "dice_custom", 
   }
 }
 ok("semua tabel Roll the Love Dice siap.");
+{
+  const { error } = await admin.from("dice_games").select("kind, positions, last_move, winner, prize, prize_done").limit(1);
+  if (error) {
+    bad(`kolom Ular Tangga belum ada — jalanin dulu supabase/migrations/0030_love_dice_board.sql. (${error.message})`);
+    process.exit(1);
+  }
+  ok("kolom Ular Tangga (0030) siap.");
+}
 
 const { data: members } = await admin.from("space_members").select("user_id, space_id, role");
 const author = members?.find((m) => m.role === "author");

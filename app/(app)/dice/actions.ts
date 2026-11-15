@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getPartner, getSpaceContext } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { categoryByFace, MODES, type DiceMode } from "@/lib/dice/config";
+import { categoryByFace, categoryOf, MODES, type DiceMode } from "@/lib/dice/config";
 import { dealCards, drawWild, faceFrom, poolFor, type DiceCurrent } from "@/lib/dice/logic";
+import { drawPrize, stepOn, type BoardMove } from "@/lib/dice/board";
 import type { Database, DiceStatus } from "@/lib/supabase/database.types";
 
 /**
@@ -45,6 +46,13 @@ export type DiceView = {
   recent: DiceTurn[];
   /** category key → done count, for the end-of-game card */
   byCategory: Record<string, number>;
+  /** Ular Tangga */
+  kind: "free" | "board";
+  positions: Record<string, number>;
+  lastMove: BoardMove | null;
+  winner: string | null;
+  prize: string | null;
+  prizeDone: boolean;
 };
 
 export type DiceResult = { ok?: boolean; error?: string; view?: DiceView; id?: string };
@@ -146,19 +154,25 @@ export async function getDiceState(gameId: string): Promise<DiceResult> {
         saved: savedIds.has(t.id),
       })),
       byCategory,
+      kind: game.kind,
+      positions: game.positions,
+      lastMove: game.last_move,
+      winner: game.winner,
+      prize: game.prize,
+      prizeDone: game.prize_done,
     },
   };
 }
 
 /** Start a game — or land in the live one if there already is one. */
-export async function createDiceGame(mode: DiceMode): Promise<DiceResult> {
+export async function createDiceGame(mode: DiceMode, kind: "free" | "board" = "free"): Promise<DiceResult> {
   const ctx = await getSpaceContext();
   if (!ctx) return { error: SESSION_GONE };
-  if (!MODES.some((m) => m.key === mode)) return { error: "Mode-nya tidak dikenal." };
+  if (!MODES.some((m) => m.key === mode) || !["free", "board"].includes(kind)) return { error: "Mode-nya tidak dikenal." };
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("dice_games")
-    .insert({ space_id: ctx.spaceId, created_by: ctx.userId, mode })
+    .insert({ space_id: ctx.spaceId, created_by: ctx.userId, mode, kind })
     .select("id")
     .single();
   if (data) return { ok: true, id: data.id };
@@ -206,8 +220,8 @@ async function myTurn(gameId: string) {
   return { l } as const;
 }
 
-async function deal(l: Loaded, face: number, n: number) {
-  const cat = categoryByFace(face);
+async function deal(l: Loaded, face: number, n: number, category?: string) {
+  const cat = category ? categoryOf(category) : categoryByFace(face);
   const { data: customs } = await l.admin
     .from("dice_custom")
     .select("id, author_id, category, modes, kind, text, secret")
@@ -221,6 +235,7 @@ export async function rollDice(gameId: string): Promise<DiceResult> {
   if ("error" in t) return { error: t.error };
   const { l } = t;
   if (l.game.current) return getDiceState(gameId);
+  if (l.game.kind === "board") return rollOnBoard(l);
 
   const wild = drawWild(fair);
   const base = { id: randomUUID(), wild, partnerAnswer: null, rolledAt: new Date().toISOString() };
@@ -233,6 +248,61 @@ export async function rollDice(gameId: string): Promise<DiceResult> {
     current = { ...base, face, category: cat.key, cards };
   }
   await move(l, { current, seen: [...l.game.seen, ...current.cards.map((c) => c.key)] });
+  return getDiceState(gameId);
+}
+
+/**
+ * Ular Tangga: move my pawn. A ladder climbs at once (+ a sweet-words card), a
+ * snake deals a card first and slides me down when it's closed, a ♥ deals a
+ * card, a plain square just passes the turn, 30 wins and draws the prize.
+ */
+async function rollOnBoard(l: Loaded): Promise<DiceResult> {
+  const me = l.ctx.userId;
+  const face = faceFrom(fair);
+  const from = l.game.positions[me] ?? 0;
+  const step = stepOn(from, face);
+  const lastMove: BoardMove = { id: randomUUID(), by: me, face, from, ...step };
+  const positions = { ...l.game.positions, [me]: step.event === "snake" ? step.landed : step.to };
+
+  if (step.event === "finish") {
+    await move(l, {
+      positions,
+      last_move: lastMove,
+      status: "ended",
+      ended_at: new Date().toISOString(),
+      winner: me,
+      prize: drawPrize(fair),
+    });
+    revalidatePath("/dice");
+    return getDiceState(l.game.id);
+  }
+  if (step.event === "plain") {
+    await move(l, { positions, last_move: lastMove, turn_user: l.partner.id });
+    return getDiceState(l.game.id);
+  }
+  const { cat, cards } = await deal(l, face, 1, step.event === "ladder" ? "sweet" : undefined);
+  const current: DiceCurrent = {
+    id: lastMove.id,
+    face,
+    category: cat.key,
+    wild: null,
+    cards,
+    partnerAnswer: null,
+    rolledAt: new Date().toISOString(),
+    board: { event: step.event, landed: step.landed, to: step.to },
+  };
+  await move(l, { positions, last_move: lastMove, current, seen: [...l.game.seen, ...cards.map((c) => c.key)] });
+  return getDiceState(l.game.id);
+}
+
+/** The prize after Ular Tangga: either of us may swap it, the one who does it marks it done. */
+export async function prizeAction(gameId: string, kind: "swap" | "done"): Promise<DiceResult> {
+  const l = await load(gameId);
+  if (!l) return { error: NOT_FOUND };
+  const g = l.game;
+  if (g.kind !== "board" || !g.winner || !g.prize || g.prize_done) return getDiceState(gameId);
+  if (kind === "done" && g.winner === l.ctx.userId) return { error: "Yang mengerjakan hadiahnya yang menandai selesai ♡" };
+  await move(l, kind === "swap" ? { prize: drawPrize(fair, g.prize) } : { prize_done: true });
   return getDiceState(gameId);
 }
 
@@ -291,6 +361,8 @@ export async function finishTurn(
     const claimed = await move(t.l, {
       current: null,
       turn_user: outcome === "heart" ? t.l.ctx.userId : t.l.partner.id,
+      // a snake slides me down once its card is closed, done or skipped
+      ...(c.board?.event === "snake" && { positions: { ...t.l.game.positions, [t.l.ctx.userId]: c.board.to } }),
       done_count: t.l.game.done_count + (done ? 1 : 0),
       skip_count: t.l.game.skip_count + (done ? 0 : 1),
     });

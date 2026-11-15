@@ -12,6 +12,8 @@ export type DiceCurrent = {
   cards: DiceCard[];
   partnerAnswer?: string | null;
   rolledAt: string;
+  /** Ular Tangga: which square dealt this card, and where the pawn goes after it */
+  board?: { event: "snake" | "ladder" | "heart"; landed: number; to: number };
 };
 
 export type CustomChallenge = {

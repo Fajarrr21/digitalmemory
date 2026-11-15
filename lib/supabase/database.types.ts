@@ -4,6 +4,7 @@
  *   npx supabase gen types typescript --project-id <ref> > lib/supabase/database.types.ts
  */
 
+import type { BoardMove } from "@/lib/dice/board";
 import type { DiceMode } from "@/lib/dice/config";
 import type { DiceCard, DiceCurrent } from "@/lib/dice/logic";
 
@@ -1246,6 +1247,12 @@ export type Database = {
           created_at: string;
           started_at: string | null;
           ended_at: string | null;
+          kind: "free" | "board";
+          positions: Record<string, number>;
+          last_move: BoardMove | null;
+          winner: string | null;
+          prize: string | null;
+          prize_done: boolean;
         };
         Insert: {
           id?: string;
@@ -1261,6 +1268,12 @@ export type Database = {
           skip_count?: number;
           started_at?: string | null;
           ended_at?: string | null;
+          kind?: "free" | "board";
+          positions?: Record<string, number>;
+          last_move?: BoardMove | null;
+          winner?: string | null;
+          prize?: string | null;
+          prize_done?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["dice_games"]["Insert"]>;
         Relationships: [];

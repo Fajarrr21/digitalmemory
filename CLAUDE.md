@@ -728,6 +728,20 @@ migrations + setup.
   note/favourite/delete, journal grouped by month). Nothing notifies. Home
   card; not in nav. No photo/voice upload on act cards (done live / via WA).
   Integration test: `node --env-file=.env.local scripts/test-dice.mjs`.
+  **Ular Tangga (migration 0030, run after 0029).** A second game kind on the
+  same row (`dice_games.kind` 'free'|'board', picked in setup; board is the
+  default). 30 squares 6×5 boustrophedon (`lib/dice/board.ts`, pure + tested:
+  `LADDERS`, `SNAKES`, `HEARTS`, `stepOn`, `cellOf`; no square chains into
+  another). `rollOnBoard`: landing ≥30 = finish (no exact roll); ladder =
+  climb at once + a Sweet Words card; snake = card first, pawn slides to the
+  tail when the card closes (done OR skip); ♥ = a card from the face's
+  category; plain = turn passes, no card. No wild cards on the board.
+  `positions` jsonb (uid → square), `last_move` drives the die + pawn
+  animation for both screens (`snake-board.tsx`: CSS grid + SVG ladders/
+  snakes, pawns glide; mover waits on its old square until the die lands).
+  First to 30 = `winner`; the other gets a sweet `prize` from `PRIZES`
+  (either may 🎲 swap, only the loser marks `prize_done`; polling continues
+  until then).
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.

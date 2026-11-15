@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { CATEGORIES, DICE_TAGLINE, DONE_LINES, MODES, WILDS, categoryOf } from "@/lib/dice/config";
 import type { DiceCurrent } from "@/lib/dice/logic";
 import { DiceCube } from "./dice-cube";
+import { SnakeBoard, type Pawn } from "./snake-board";
 import {
   answerAlongside,
   chooseCategory,
@@ -18,6 +19,7 @@ import {
   getDiceState,
   rollDice,
   saveTurn,
+  prizeAction,
   setReady,
   type DiceResult,
   type DiceView,
@@ -40,13 +42,14 @@ export function DiceGame({ initial, faces }: { initial: DiceView; faces: Faces }
     if (r?.view) setView(r.view);
   }, [view.id]);
 
+  const listening = view.status !== "ended" || (view.kind === "board" && !!view.prize && !view.prizeDone);
   // Plain polling, like the quiz: the row is the truth, so a refresh or a lost
   // connection just picks up where the game is.
   useEffect(() => {
-    if (view.status === "ended") return;
+    if (!listening) return;
     const t = setInterval(() => void refresh(), POLL_MS);
     return () => clearInterval(t);
-  }, [view.status, refresh]);
+  }, [listening, refresh]);
 
   const nameOf = (id: string | null) => (id === view.selfId ? faces.me.name : view.partnerName);
 
@@ -59,7 +62,12 @@ export function DiceGame({ initial, faces }: { initial: DiceView; faces: Faces }
       {error && <p className="text-center text-sm text-accent-ink">{error}</p>}
       {view.status === "lobby" && <Lobby view={view} faces={faces} onResult={apply} />}
       {view.status === "playing" && <Board view={view} faces={faces} nameOf={nameOf} onResult={apply} />}
-      {view.status === "ended" && <Ended view={view} />}
+      {view.status === "ended" &&
+        (view.kind === "board" && view.winner ? (
+          <BoardEnded view={view} faces={faces} nameOf={nameOf} onResult={apply} />
+        ) : (
+          <Ended view={view} />
+        ))}
     </div>
   );
 }
@@ -198,7 +206,11 @@ function Board({
   const [toast, setToast] = useState<string | null>(null);
   const [turnBanner, setTurnBanner] = useState<string | null>(null);
   // a fresh game announces who goes first
-  const prevTurn = useRef(view.doneCount + view.skipCount === 0 && !cur ? null : view.turnUser);
+  const prevTurn = useRef(view.doneCount + view.skipCount === 0 && !cur && !view.lastMove ? null : view.turnUser);
+  const board = view.kind === "board";
+  const lm = view.lastMove;
+  // Ular Tangga: the mover's pawn waits on its old square until the die lands
+  const [landed, setLanded] = useState<string | null>(lm?.id ?? null);
 
   useEffect(() => {
     if (prevTurn.current !== view.turnUser && view.turnUser) {
@@ -217,7 +229,22 @@ function Board({
     return () => clearTimeout(t);
   }, [toast]);
 
-  const onSettled = useCallback(() => setRevealed(cur?.id ?? null), [cur?.id]);
+  const onSettled = useCallback(() => {
+    setRevealed(cur?.id ?? null);
+    if (!lm) return;
+    setLanded(lm.id);
+    const who = lm.by === view.selfId ? "kamu" : view.partnerName;
+    const line =
+      lm.event === "ladder" ? `🪜 naik tangga ke ${lm.to}!`
+      : lm.event === "snake" ? `🐍 aduh, ular di ${lm.landed}…`
+      : lm.event === "heart" ? `♥ kotak hati!`
+      : `${who} maju ke ${lm.to}`;
+    setToast(line);
+  }, [cur?.id, lm, view.selfId, view.partnerName]);
+  const pawns: Pawn[] = [
+    { id: view.selfId, name: faces.me.name, avatar: faces.me.avatar, color: "#D99AA8", at: view.positions[view.selfId] ?? 0 },
+    { id: view.partnerId, name: view.partnerName, avatar: faces.partner.avatar, color: "#8D6E52", at: view.positions[view.partnerId] ?? 0 },
+  ].map((p) => (lm && landed !== lm.id && p.id === lm.by ? { ...p, at: lm.from } : p));
   const choosing = !!cur && cur.wild === "choice" && !cur.cards.length;
   const showCard = !!cur && cur.cards.length > 0 && revealed === cur.id;
 
@@ -242,7 +269,17 @@ function Board({
           <Player name={view.partnerName} avatar={faces.partner.avatar} active={!mine} />
         </div>
 
-        <DiceCube face={cur?.face ?? null} rollKey={cur?.id ?? null} spinning={spinning} onSettled={onSettled} />
+        {board && (
+          <div className="mt-4">
+            <SnakeBoard pawns={pawns} activeId={view.turnUser} />
+          </div>
+        )}
+        <DiceCube
+          face={board ? (lm?.face ?? null) : (cur?.face ?? null)}
+          rollKey={board ? (lm?.id ?? null) : (cur?.id ?? null)}
+          spinning={spinning}
+          onSettled={onSettled}
+        />
 
         <AnimatePresence>
           {turnBanner && (
@@ -397,6 +434,15 @@ function ChallengeCard({
       <span aria-hidden className="pointer-events-none absolute -top-4 -right-3 text-8xl opacity-15">
         {cat.icon}
       </span>
+      {cur.board && (
+        <p className="mb-3 rounded-2xl bg-paper/80 px-3 py-2 text-sm text-ink">
+          {cur.board.event === "snake"
+            ? `🐍 Kena ular di ${cur.board.landed}! Kerjakan tantangannya — setelah itu turun ke ${cur.board.to}.`
+            : cur.board.event === "ladder"
+              ? `🪜 Naik tangga ke ${cur.board.to}! Bonus kecil: satu kata manis dulu ♡`
+              : `♥ Kotak hati di ${cur.board.landed} — satu tantangan untukmu.`}
+        </p>
+      )}
       {wild && (
         <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-paper/80 px-3 py-1 text-xs text-ink">
           {wild.icon} <b className="font-medium">{wild.name}</b> · {wild.line}
@@ -610,5 +656,68 @@ function Ended({ view }: { view: DiceView }) {
         </Link>
       </div>
     </PaperCard>
+  );
+}
+
+/* ------------------------------------------------- ular tangga ended -- */
+
+function BoardEnded({
+  view,
+  faces,
+  nameOf,
+  onResult,
+}: {
+  view: DiceView;
+  faces: Faces;
+  nameOf: (id: string | null) => string;
+  onResult: (r: DiceResult) => void;
+}) {
+  const reduce = useReducedMotion();
+  const [pending, start] = useTransition();
+  const iWon = view.winner === view.selfId;
+  const loser = iWon ? view.partnerName : "kamu";
+  const pawns: Pawn[] = [
+    { id: view.selfId, name: faces.me.name, avatar: faces.me.avatar, color: "#D99AA8", at: view.positions[view.selfId] ?? 0 },
+    { id: view.partnerId, name: view.partnerName, avatar: faces.partner.avatar, color: "#8D6E52", at: view.positions[view.partnerId] ?? 0 },
+  ];
+  return (
+    <div className="space-y-5">
+      <PaperCard className="text-center">
+        <Eyebrow>🏁 sampai di kotak 30</Eyebrow>
+        <motion.p
+          initial={reduce ? false : { scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="mt-3 font-display text-3xl text-ink"
+        >
+          {iWon ? "Kamu sampai duluan! 🏆" : `${nameOf(view.winner)} sampai duluan 🏆`}
+        </motion.p>
+        <div className="mt-5">
+          <SnakeBoard pawns={pawns} activeId={view.winner} />
+        </div>
+      </PaperCard>
+
+      {view.prize && (
+        <section className="rounded-[28px] border border-accent/50 bg-gradient-to-br from-blush/50 to-paper p-6 text-center shadow-[var(--shadow-lift)]">
+          <p className="font-mono text-[11px] tracking-wide text-ink-faint uppercase">hadiah manis untuk {loser}</p>
+          <p className="mt-3 font-display text-2xl leading-snug text-ink">{view.prize}</p>
+          {view.prizeDone ? (
+            <p className="mt-4 font-hand text-2xl text-accent-ink">sudah dikerjakan ♡</p>
+          ) : (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {!iWon && (
+                <Button disabled={pending} onClick={() => start(async () => onResult(await prizeAction(view.id, "done")))}>
+                  Sudah kulakukan ♡
+                </Button>
+              )}
+              <Button variant="ghost" disabled={pending} onClick={() => start(async () => onResult(await prizeAction(view.id, "swap")))}>
+                🎲 ganti yang lain
+              </Button>
+            </div>
+          )}
+          {iWon && !view.prizeDone && <p className="mt-3 text-sm text-ink-soft">Menunggu {view.partnerName} mengerjakannya…</p>}
+        </section>
+      )}
+      <Ended view={view} />
+    </div>
   );
 }
