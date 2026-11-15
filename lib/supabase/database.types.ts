@@ -4,6 +4,9 @@
  *   npx supabase gen types typescript --project-id <ref> > lib/supabase/database.types.ts
  */
 
+import type { DiceMode } from "@/lib/dice/config";
+import type { DiceCard, DiceCurrent } from "@/lib/dice/logic";
+
 export type MemberRole = "keeper" | "author";
 export type LetterStatus = "sealed" | "opened";
 export type MediaType = "image" | "video" | "audio";
@@ -12,6 +15,7 @@ export type ThemePref = "system" | "light" | "dark";
 export type AwayKind = "working" | "playing" | "outside" | "sleeping" | "busy";
 export type QuizPunishState = "choosing" | "chosen" | "approved" | "done";
 export type QuizStatus = "preparing" | "playing" | "completed" | "cancelled";
+export type DiceStatus = "lobby" | "playing" | "ended";
 export type BoothStatus = "waiting" | "joined" | "shooting" | "completed";
 export type TaskRepeat = "none" | "daily" | "weekly" | "monthly";
 export type MeanwhileCategory = "question" | "pick" | "photo" | "song" | "creation" | "silly";
@@ -1224,6 +1228,140 @@ export type Database = {
         Row: { game_id: string; guesser_id: string; idx: number; choice: number; correct: boolean; created_at: string };
         Insert: { game_id: string; guesser_id: string; idx: number; choice: number; correct: boolean };
         Update: never;
+        Relationships: [];
+      };
+      dice_games: {
+        Row: {
+          id: string;
+          space_id: string;
+          created_by: string;
+          mode: DiceMode;
+          status: DiceStatus;
+          turn_user: string | null;
+          current: DiceCurrent | null;
+          seen: string[];
+          version: number;
+          done_count: number;
+          skip_count: number;
+          created_at: string;
+          started_at: string | null;
+          ended_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          created_by: string;
+          mode?: DiceMode;
+          status?: DiceStatus;
+          turn_user?: string | null;
+          current?: DiceCurrent | null;
+          seen?: string[];
+          version?: number;
+          done_count?: number;
+          skip_count?: number;
+          started_at?: string | null;
+          ended_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["dice_games"]["Insert"]>;
+        Relationships: [];
+      };
+      dice_players: {
+        Row: { game_id: string; user_id: string; ready_at: string | null; seen_at: string };
+        Insert: { game_id: string; user_id: string; ready_at?: string | null; seen_at?: string };
+        Update: Partial<{ ready_at: string | null; seen_at: string }>;
+        Relationships: [];
+      };
+      dice_turns: {
+        Row: {
+          id: string;
+          game_id: string;
+          space_id: string;
+          player_id: string;
+          face: number | null;
+          category: string;
+          wild: string | null;
+          cards: DiceCard[];
+          answer: string | null;
+          partner_answer: string | null;
+          status: "done" | "skipped";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          game_id: string;
+          space_id: string;
+          player_id: string;
+          face?: number | null;
+          category: string;
+          wild?: string | null;
+          cards?: DiceCard[];
+          answer?: string | null;
+          partner_answer?: string | null;
+          status: "done" | "skipped";
+        };
+        Update: never;
+        Relationships: [];
+      };
+      dice_custom: {
+        Row: {
+          id: string;
+          space_id: string;
+          author_id: string;
+          category: string;
+          modes: string[];
+          kind: "a" | "x";
+          text: string;
+          secret: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          author_id: string;
+          category: string;
+          modes?: string[];
+          kind?: "a" | "x";
+          text: string;
+          secret?: boolean;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dice_custom"]["Insert"]>;
+        Relationships: [];
+      };
+      dice_memories: {
+        Row: {
+          id: string;
+          space_id: string;
+          turn_id: string | null;
+          game_id: string | null;
+          saved_by: string;
+          player_id: string | null;
+          category: string;
+          challenge: string;
+          answer: string | null;
+          partner_answer: string | null;
+          note: string | null;
+          favorite: boolean;
+          played_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          space_id: string;
+          turn_id?: string | null;
+          game_id?: string | null;
+          saved_by: string;
+          player_id?: string | null;
+          category: string;
+          challenge: string;
+          answer?: string | null;
+          partner_answer?: string | null;
+          note?: string | null;
+          favorite?: boolean;
+          played_at?: string;
+        };
+        Update: Partial<{ note: string | null; favorite: boolean }>;
         Relationships: [];
       };
       activity_tags: {

@@ -49,7 +49,9 @@ for timezone-aware dates, Vitest for unit tests.
   is **little words.** (`/words`), and only as a writing aid the writer invokes
   on their own text — it never writes or sends anything on its own.
   (Second, same-spirit exception: the quiz's ✨ decoy suggester on `/quiz`,
-  invoked by the player on their own answers, always editable.)
+  invoked by the player on their own answers, always editable.
+  Third: the ✨ idea suggester on `/dice/custom` — ideas the writer picks
+  and edits, never saved or dealt by itself.)
 - **Design system** in `app/globals.css`: semantic CSS-variable color tokens
   (`bg-ground`, `text-ink`, `bg-paper`, `text-accent-ink`, …) that auto-resolve for
   light / dark / system. Fonts: Fraunces (display), Instrument Sans (body), Caveat
@@ -699,6 +701,33 @@ migrations + setup.
   asks for others, either may 🎲 swap any time before done, loser marks done.
   `punishAction` enforces who may do what. Without 0028 the card just hides.
   Not built yet (Phase 3): badges, surprise questions, memory cards.
+- **Roll the Love Dice (done, migration 0029 — run it in the SQL editor).**
+  `/dice` home (intro + mode setup Soft/Romantic/Deep/Chaos + live game link +
+  stats) · `/dice/[id]` lobby → game → ended · `/dice/memories` Our Dice
+  Memories · `/dice/custom` custom challenges. Two players take turns; no
+  score, skip is always free. One live game per space (partial unique index);
+  lobby = `dice_players` (joined/ready/heartbeat `seen_at`, online = <12s);
+  second "ready" starts it with a random first player. Roll is decided on the
+  server with `crypto.randomInt` (`faceFrom`, fair 1/6); 1-in-8 rolls is a
+  wild card (Switch Roles = the other also answers via `answerAlongside`,
+  Double Trouble = 2 cards, Your Choice = pick the face, Heart Skip = skip AND
+  roll again — plain skip is already penalty-free). Bank of 123 hand-written
+  challenges in `lib/dice/config.ts` (6 faces × ≥20, tagged by mode + "a"
+  answer / "x" act — act cards have no text box). `dealCards` (pure + tested,
+  `lib/dice/logic.ts`): unseen in mode → unseen any mode → repeat; `seen` kept
+  on the game row. Custom challenges (`dice_custom`, RLS author-writes,
+  partner reads only non-secret) are dealt only on the PARTNER's turn, 3×
+  weight; a secret one first appears when dealt (text copied onto
+  `current`). Game writes = server actions on the admin client with a
+  `version` optimistic lock (double taps never apply twice); clients only
+  SELECT. Sync = 2s polling (like the quiz), state lives on the row so
+  refresh/reconnect resumes; typed answer drafts in localStorage per roll.
+  3D CSS die with heart pips (`dice-cube.tsx`, rotation derived in render,
+  reduced-motion safe). Finished turns → `dice_turns` (history + stats);
+  "♡ Save Moment" / ♡ in history → `dice_memories` (one per turn, both may
+  note/favourite/delete, journal grouped by month). Nothing notifies. Home
+  card; not in nav. No photo/voice upload on act cards (done live / via WA).
+  Integration test: `node --env-file=.env.local scripts/test-dice.mjs`.
 - Next (post-MVP, optional): Comfort Room, For You (special_messages), Night
   Reflection, unlockables, offline AI letter drafting. Then
   polish/a11y/perf pass and Vercel deploy.
