@@ -112,7 +112,7 @@ export function SnakeBoard({ pawns, activeId }: { pawns: Pawn[]; activeId: strin
                 className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                 initial={false}
                 animate={{ left: `${((c.x + off) / W) * 100}%`, top: `${((c.y + off * 0.4) / H) * 100}%` }}
-                transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 70, damping: 14 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.45, ease: "easeOut" }}
               >
                 <PawnDot p={p} active={p.id === activeId} />
               </motion.div>

@@ -6,6 +6,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PaperCard } from "@/components/ui/paper-card";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { CATEGORIES, DICE_TAGLINE, DONE_LINES, MODES, WILDS, categoryOf } from "@/lib/dice/config";
 import type { DiceCurrent } from "@/lib/dice/logic";
@@ -25,7 +27,8 @@ import {
   type DiceView,
 } from "./actions";
 
-const POLL_MS = 2000;
+// Realtime "poke" is the fast path; polling is only the safety net.
+const POLL_MS = 3000;
 
 export type Faces = { me: { name: string; avatar: string | null }; partner: { avatar: string | null } };
 
@@ -33,14 +36,33 @@ export function DiceGame({ initial, faces }: { initial: DiceView; faces: Faces }
   const [view, setView] = useState(initial);
   const [error, setError] = useState<string | null>(null);
 
+  const channel = useRef<RealtimeChannel | null>(null);
   const apply = useCallback((r: DiceResult) => {
-    if (r.view) setView(r.view);
+    if (r.view) {
+      setView(r.view);
+      // tell the other screen to re-read now (the payload carries nothing)
+      void channel.current?.send({ type: "broadcast", event: "poke", payload: {} });
+    }
     setError(r.error ?? null);
   }, []);
   const refresh = useCallback(async () => {
     const r = await getDiceState(view.id).catch(() => null);
     if (r?.view) setView(r.view);
   }, [view.id]);
+
+  // A public broadcast channel on the game's unguessable id. It only ever
+  // carries an empty "something changed" — the state itself is always read
+  // through the server actions, so nothing private travels here.
+  useEffect(() => {
+    const supabase = createClient();
+    const ch = supabase.channel(`dice:${view.id}`, { config: { broadcast: { self: false } } });
+    ch.on("broadcast", { event: "poke" }, () => void refresh()).subscribe();
+    channel.current = ch;
+    return () => {
+      channel.current = null;
+      void supabase.removeChannel(ch);
+    };
+  }, [view.id, refresh]);
 
   const listening = view.status !== "ended" || (view.kind === "board" && !!view.prize && !view.prizeDone);
   // Plain polling, like the quiz: the row is the truth, so a refresh or a lost

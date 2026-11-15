@@ -71,10 +71,11 @@ async function load(gameId: string) {
   const ctx = await getSpaceContext();
   if (!ctx) return null;
   const admin = createAdminClient();
-  const { data: game } = await admin.from("dice_games").select("*").eq("id", gameId).maybeSingle();
-  if (!game || game.space_id !== ctx.spaceId) return null;
-  const partner = await getPartner(ctx.spaceId, ctx.userId);
-  if (!partner) return null;
+  const [{ data: game }, partner] = await Promise.all([
+    admin.from("dice_games").select("*").eq("id", gameId).maybeSingle(),
+    getPartner(ctx.spaceId, ctx.userId),
+  ]);
+  if (!game || game.space_id !== ctx.spaceId || !partner) return null;
   return { ctx, admin, game, partner };
 }
 type Loaded = NonNullable<Awaited<ReturnType<typeof load>>>;
@@ -93,28 +94,35 @@ async function move(l: Loaded, patch: GamePatch) {
 
 export async function getDiceState(gameId: string): Promise<DiceResult> {
   const l = await load(gameId);
-  if (!l) return { error: NOT_FOUND };
+  return l ? stateOf(l) : { error: NOT_FOUND };
+}
+
+/** After a move: re-read just the game row (auth + partner are already known). */
+async function fresh(l: Loaded): Promise<DiceResult> {
+  const { data: game } = await l.admin.from("dice_games").select("*").eq("id", l.game.id).single();
+  return stateOf(game ? { ...l, game } : l);
+}
+
+async function stateOf(l: Loaded): Promise<DiceResult> {
   const { ctx, admin, game, partner } = l;
 
-  // Being here is "joined" + a heartbeat for the partner's online dot.
-  if (game.status !== "ended") {
-    await admin
-      .from("dice_players")
-      .upsert({ game_id: game.id, user_id: ctx.userId, seen_at: new Date().toISOString() }, { onConflict: "game_id,user_id" });
-  }
-
-  const [{ data: players }, { data: turns }, { data: cats }] = await Promise.all([
+  // One parallel round: heartbeat ("joined" + the partner's online dot) and reads.
+  const [, { data: players }, { data: turns }, { data: cats }, { data: saved }] = await Promise.all([
+    game.status !== "ended"
+      ? admin
+          .from("dice_players")
+          .upsert({ game_id: game.id, user_id: ctx.userId, seen_at: new Date().toISOString() }, { onConflict: "game_id,user_id" })
+      : null,
     admin.from("dice_players").select("*").eq("game_id", game.id),
     admin.from("dice_turns").select("*").eq("game_id", game.id).order("created_at", { ascending: false }).limit(6),
     game.status === "ended"
       ? admin.from("dice_turns").select("category").eq("game_id", game.id).eq("status", "done")
       : Promise.resolve({ data: [] as { category: string }[] }),
+    admin.from("dice_memories").select("turn_id").eq("game_id", game.id),
   ]);
-  const { data: saved } = turns?.length
-    ? await admin.from("dice_memories").select("turn_id").in("turn_id", turns.map((t) => t.id))
-    : { data: [] };
   const savedIds = new Set(saved?.map((s) => s.turn_id));
-  const mine = players?.find((p) => p.user_id === ctx.userId);
+  // the heartbeat ran alongside the read, so count myself as joined regardless
+  const mine = players?.find((p) => p.user_id === ctx.userId) ?? { ready_at: null };
   const theirs = players?.find((p) => p.user_id === partner.id);
   const byCategory: Record<string, number> = {};
   for (const c of cats ?? []) byCategory[c.category] = (byCategory[c.category] ?? 0) + 1;
@@ -135,7 +143,7 @@ export async function getDiceState(gameId: string): Promise<DiceResult> {
       current: game.current,
       doneCount: game.done_count,
       skipCount: game.skip_count,
-      me: { joined: !!mine, ready: !!mine?.ready_at },
+      me: { joined: true, ready: !!mine.ready_at },
       partner: {
         joined: !!theirs,
         ready: !!theirs?.ready_at,
@@ -192,7 +200,7 @@ export async function createDiceGame(mode: DiceMode, kind: "free" | "board" = "f
 export async function setReady(gameId: string, ready: boolean): Promise<DiceResult> {
   const l = await load(gameId);
   if (!l) return { error: NOT_FOUND };
-  if (l.game.status !== "lobby") return getDiceState(gameId);
+  if (l.game.status !== "lobby") return stateOf(l);
   const now = new Date().toISOString();
   await l.admin
     .from("dice_players")
@@ -209,7 +217,7 @@ export async function setReady(gameId: string, ready: boolean): Promise<DiceResu
       await move(l, { status: "playing", started_at: now, turn_user: first });
     }
   }
-  return getDiceState(gameId);
+  return fresh(l);
 }
 
 async function myTurn(gameId: string) {
@@ -234,7 +242,7 @@ export async function rollDice(gameId: string): Promise<DiceResult> {
   const t = await myTurn(gameId);
   if ("error" in t) return { error: t.error };
   const { l } = t;
-  if (l.game.current) return getDiceState(gameId);
+  if (l.game.current) return stateOf(l);
   if (l.game.kind === "board") return rollOnBoard(l);
 
   const wild = drawWild(fair);
@@ -248,7 +256,7 @@ export async function rollDice(gameId: string): Promise<DiceResult> {
     current = { ...base, face, category: cat.key, cards };
   }
   await move(l, { current, seen: [...l.game.seen, ...current.cards.map((c) => c.key)] });
-  return getDiceState(gameId);
+  return fresh(l);
 }
 
 /**
@@ -274,11 +282,11 @@ async function rollOnBoard(l: Loaded): Promise<DiceResult> {
       prize: drawPrize(fair),
     });
     revalidatePath("/dice");
-    return getDiceState(l.game.id);
+    return fresh(l);
   }
   if (step.event === "plain") {
     await move(l, { positions, last_move: lastMove, turn_user: l.partner.id });
-    return getDiceState(l.game.id);
+    return fresh(l);
   }
   const { cat, cards } = await deal(l, face, 1, step.event === "ladder" ? "sweet" : undefined);
   const current: DiceCurrent = {
@@ -292,7 +300,7 @@ async function rollOnBoard(l: Loaded): Promise<DiceResult> {
     board: { event: step.event, landed: step.landed, to: step.to },
   };
   await move(l, { positions, last_move: lastMove, current, seen: [...l.game.seen, ...cards.map((c) => c.key)] });
-  return getDiceState(l.game.id);
+  return fresh(l);
 }
 
 /** The prize after Ular Tangga: either of us may swap it, the one who does it marks it done. */
@@ -300,10 +308,10 @@ export async function prizeAction(gameId: string, kind: "swap" | "done"): Promis
   const l = await load(gameId);
   if (!l) return { error: NOT_FOUND };
   const g = l.game;
-  if (g.kind !== "board" || !g.winner || !g.prize || g.prize_done) return getDiceState(gameId);
+  if (g.kind !== "board" || !g.winner || !g.prize || g.prize_done) return stateOf(l);
   if (kind === "done" && g.winner === l.ctx.userId) return { error: "Yang mengerjakan hadiahnya yang menandai selesai ♡" };
   await move(l, kind === "swap" ? { prize: drawPrize(fair, g.prize) } : { prize_done: true });
-  return getDiceState(gameId);
+  return fresh(l);
 }
 
 /** Your Choice: I pick the face myself. */
@@ -313,10 +321,10 @@ export async function chooseCategory(gameId: string, face: number): Promise<Dice
   if ("error" in t) return { error: t.error };
   const { l } = t;
   const cur = l.game.current;
-  if (!cur || cur.wild !== "choice" || cur.cards.length) return getDiceState(gameId);
+  if (!cur || cur.wild !== "choice" || cur.cards.length) return stateOf(l);
   const { cat, cards } = await deal(l, face, 1);
   await move(l, { current: { ...cur, face, category: cat.key, cards }, seen: [...l.game.seen, ...cards.map((c) => c.key)] });
-  return getDiceState(gameId);
+  return fresh(l);
 }
 
 /** Switch Roles: the one whose turn it ISN'T answers the same question too. */
@@ -328,7 +336,7 @@ export async function answerAlongside(gameId: string, text: string): Promise<Dic
     if (!l) return { error: NOT_FOUND };
     const cur = l.game.current;
     if (l.game.status !== "playing" || l.game.turn_user === l.ctx.userId || cur?.wild !== "switch") {
-      return getDiceState(gameId);
+      return stateOf(l);
     }
     if (await move(l, { current: { ...cur, partnerAnswer: parsed.data || null } })) break;
   }
@@ -355,7 +363,7 @@ export async function finishTurn(
     const t = await myTurn(gameId);
     if ("error" in t) return { error: t.error };
     const c = t.l.game.current;
-    if (!c || !c.cards.length || !c.category) return getDiceState(gameId);
+    if (!c || !c.cards.length || !c.category) return stateOf(t.l);
     if (outcome === "heart" && c.wild !== "heart") return { error: "Ini bukan kartu Heart Skip." };
     const done = outcome === "done";
     const claimed = await move(t.l, {
@@ -388,7 +396,7 @@ export async function finishTurn(
     .select("id")
     .single();
   if (done && save && turn) await saveTurn(turn.id);
-  return getDiceState(gameId);
+  return fresh(l);
 }
 
 /** Keep a finished turn in Our Dice Memories (either of us; once per turn). */
@@ -429,5 +437,5 @@ export async function endDiceGame(gameId: string): Promise<DiceResult> {
     .eq("id", gameId)
     .in("status", ["lobby", "playing"]);
   revalidatePath("/dice");
-  return getDiceState(gameId);
+  return fresh(l);
 }

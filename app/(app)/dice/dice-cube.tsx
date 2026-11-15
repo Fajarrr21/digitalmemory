@@ -61,7 +61,8 @@ export function DiceCube({
   if (spinning !== st.spinning) {
     setSt((s) => ({ ...s, spinning, rot: spinning ? { x: s.rot.x + 720, y: s.rot.y + 540 } : s.rot }));
   } else if (!spinning && rollKey && face != null && (rollKey !== st.key || face !== st.face)) {
-    const ahead = (from: number, to: number) => from + 720 + ((((to - from - 720) % 360) + 360) % 360);
+    // land one full turn further on — enough to read as a roll, short enough to feel snappy
+    const ahead = (from: number, to: number) => from + 360 + ((((to - from - 360) % 360) + 360) % 360);
     const t = TARGET[face];
     setSt((s) => ({ ...s, key: rollKey, face, rot: { x: ahead(s.rot.x, t.x), y: ahead(s.rot.y, t.y) } }));
   }
@@ -83,7 +84,7 @@ export function DiceCube({
         style={{ width: SIZE, height: SIZE, transformStyle: "preserve-3d" }}
         initial={false}
         animate={reduce ? { rotateX: TARGET[face ?? 1].x, rotateY: TARGET[face ?? 1].y } : { rotateX: rot.x, rotateY: rot.y }}
-        transition={spinning ? { duration: 1.6, ease: "linear" } : { type: "spring", stiffness: 38, damping: 13, mass: 1.1 }}
+        transition={spinning ? { duration: 1.2, ease: "linear" } : { duration: 0.7, ease: [0.15, 0.85, 0.3, 1] }}
         onAnimationComplete={() => {
           if (reduce || spinning || !rollKey || settledFor.current === rollKey) return;
           settledFor.current = rollKey;
