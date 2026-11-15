@@ -114,7 +114,7 @@ async function stateOf(l: Loaded): Promise<DiceResult> {
           .upsert({ game_id: game.id, user_id: ctx.userId, seen_at: new Date().toISOString() }, { onConflict: "game_id,user_id" })
       : null,
     admin.from("dice_players").select("*").eq("game_id", game.id),
-    admin.from("dice_turns").select("*").eq("game_id", game.id).order("created_at", { ascending: false }).limit(6),
+    admin.from("dice_turns").select("*").eq("game_id", game.id).order("created_at", { ascending: false }).limit(game.status === "ended" ? 300 : 6),
     game.status === "ended"
       ? admin.from("dice_turns").select("category").eq("game_id", game.id).eq("status", "done")
       : Promise.resolve({ data: [] as { category: string }[] }),

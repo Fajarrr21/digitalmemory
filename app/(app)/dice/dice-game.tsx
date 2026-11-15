@@ -88,7 +88,7 @@ export function DiceGame({ initial, faces }: { initial: DiceView; faces: Faces }
         (view.kind === "board" && view.winner ? (
           <BoardEnded view={view} faces={faces} nameOf={nameOf} onResult={apply} />
         ) : (
-          <Ended view={view} />
+          <Ended view={view} nameOf={nameOf} onResult={apply} />
         ))}
     </div>
   );
@@ -597,7 +597,7 @@ function History({
   if (!view.recent.length) return null;
   return (
     <PaperCard>
-      <Eyebrow>baru saja</Eyebrow>
+      <Eyebrow>{view.status === "ended" ? `semua tantangan · ${view.recent.length}` : "baru saja"}</Eyebrow>
       <ul className="mt-3 space-y-3">
         {view.recent.map((t) => {
           const c = categoryOf(t.category);
@@ -645,9 +645,18 @@ function History({
 
 /* ------------------------------------------------------------ ended -- */
 
-function Ended({ view }: { view: DiceView }) {
+function Ended({
+  view,
+  nameOf,
+  onResult,
+}: {
+  view: DiceView;
+  nameOf: (id: string | null) => string;
+  onResult: (r: DiceResult) => void;
+}) {
   const top = Object.entries(view.byCategory).sort((a, b) => b[1] - a[1]);
   return (
+    <>
     <PaperCard className="text-center">
       <Eyebrow>permainan selesai</Eyebrow>
       <p className="mt-3 font-display text-3xl text-ink">
@@ -678,6 +687,8 @@ function Ended({ view }: { view: DiceView }) {
         </Link>
       </div>
     </PaperCard>
+      <History view={view} nameOf={nameOf} onResult={onResult} />
+    </>
   );
 }
 
@@ -739,7 +750,7 @@ function BoardEnded({
           {iWon && !view.prizeDone && <p className="mt-3 text-sm text-ink-soft">Menunggu {view.partnerName} mengerjakannya…</p>}
         </section>
       )}
-      <Ended view={view} />
+      <Ended view={view} nameOf={nameOf} onResult={onResult} />
     </div>
   );
 }
